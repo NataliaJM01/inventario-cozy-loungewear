@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración - Inventario Cozy Loungewear{% endblock %}
+
+{% block page_title %}Configuración de la Aplicación{% endblock %}
+
+{% block content %}
+<div class="p-4 md:p-6 space-y-8">
+
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-slate-200 mb-4">Apariencia</h3>
+        <div class="flex items-center justify-between mb-4">
+            <span class="text-sm font-medium text-gray-700 dark:text-slate-300">Modo Oscuro</span>
+            <label for="darkModeToggle" class="inline-flex relative items-center cursor-pointer">
+                <input type="checkbox" value="" id="darkModeToggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 dark:peer-focus:ring-pink-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#D96A9E]"></div>
+            </label>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-slate-400 mb-4">Activa el modo oscuro para una experiencia visual diferente.</p>
+        
+        <div class="flex items-center justify-end">
+            <span id="appearanceSaveStatus" class="text-xs text-green-600 dark:text-green-400 mr-3"></span>
+            <button id="saveAppearanceButton" type="button" class="text-white bg-[#D96A9E] hover:bg-[#c75d8f] focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                Guardar Cambios
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-slate-200 mb-4">Soporte</h3>
+        <div class="text-sm text-gray-700 dark:text-slate-300 space-y-3">
+            <p>Si encuentras algún problema con la aplicación o tienes alguna sugerencia, ¡no dudes en contactarme!</p>
+            <p>
+                Puedes enviarme un correo electrónico a:
+                <a href="mailto:coconutkiwi.smoothie@gmail.com" class="text-[#D96A9E] hover:underline font-medium">coconutkiwi.smoothie@gmail.com</a>
+            </p>
+            <p>
+                O llamarme/escribirme al:
+                <span class="font-medium text-[#D96A9E]">+57 (319) 457-7962</span>
+            </p>
+            <p class="text-xs text-gray-500 dark:text-slate-400 mt-4">
+                ¡Tu feedback es muy valioso para seguir mejorando esta herramienta!
+            </p>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-slate-200 mb-4">Acerca de</h3>
+        <div class="text-sm text-gray-700 dark:text-slate-300 space-y-1">
+            <p><strong>Inventario Cozy Loungewear</strong></p>
+            <p>Versión: 1.0.0 (En desarrollo)</p>
+            <p>Desarrollado con cariño por: Natalia Montoya</p>
+            <p class="mt-3 text-xs text-gray-500 dark:text-slate-400">
+                &copy; {{ current_year if current_year else '2024' }} Cozy Loungewear. Todos los derechos reservados.
+            </p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    console.log("DEBUG: Settings page script loaded.");
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const saveAppearanceButton = document.getElementById('saveAppearanceButton');
+    const appearanceSaveStatus = document.getElementById('appearanceSaveStatus');
+
+    function applyVisualTheme(isDark) {
+        console.log("DEBUG: applyVisualTheme called. isDark:", isDark);
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+            console.log("DEBUG: Added 'dark' class to <html>");
+        } else {
+            document.documentElement.classList.remove('dark');
+            console.log("DEBUG: Removed 'dark' class from <html>");
+        }
+    }
+
+    function initializeThemeAndToggle() {
+        console.log("DEBUG: initializeThemeAndToggle called.");
+        let isCurrentlyDark;
+        const storedTheme = localStorage.getItem('theme');
+        console.log("DEBUG: Theme from localStorage:", storedTheme);
+
+        if (storedTheme === 'dark') {
+            isCurrentlyDark = true;
+        } else if (storedTheme === 'light') {
+            isCurrentlyDark = false;
+        } else { 
+            isCurrentlyDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            console.log("DEBUG: No theme in localStorage, system prefers dark:", isCurrentlyDark);
+        }
+        
+        // La aplicación visual del tema al cargar la página ya la hace base.html
+        // Aquí solo sincronizamos el interruptor.
+        if (darkModeToggle) {
+            darkModeToggle.checked = isCurrentlyDark;
+            console.log("DEBUG: darkModeToggle.checked set to:", isCurrentlyDark);
+        } else {
+            console.log("DEBUG: darkModeToggle not found.");
+        }
+    }
+
+    initializeThemeAndToggle();
+
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('change', function() {
+            console.log("DEBUG: darkModeToggle changed. Checked:", this.checked);
+            applyVisualTheme(this.checked); // Aplicar cambio visual inmediatamente
+            if (appearanceSaveStatus) appearanceSaveStatus.textContent = ''; 
+        });
+    }
+
+    if (saveAppearanceButton && darkModeToggle) {
+        saveAppearanceButton.addEventListener('click', function() {
+            const themeToSave = darkModeToggle.checked ? 'dark' : 'light';
+            console.log("DEBUG: saveAppearanceButton clicked. Theme to save:", themeToSave);
+            localStorage.setItem('theme', themeToSave);
+            console.log("DEBUG: Theme saved to localStorage:", localStorage.getItem('theme'));
+            
+            // No es necesario llamar a applyVisualTheme aquí de nuevo,
+            // ya que el cambio visual se hizo al cambiar el toggle.
+            // El script en base.html se encargará de aplicar el tema correcto en la próxima carga de página.
+
+            if (appearanceSaveStatus) {
+                appearanceSaveStatus.textContent = '¡Preferencias guardadas!';
+                setTimeout(() => {
+                    appearanceSaveStatus.textContent = '';
+                }, 2000);
+            }
+        });
+    } else {
+        if (!saveAppearanceButton) console.log("DEBUG: saveAppearanceButton not found.");
+        if (!darkModeToggle) console.log("DEBUG: darkModeToggle not found (for save button listener).");
+    }
+});
+</script>
+{% endblock %}

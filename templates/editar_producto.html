@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Producto - Inventario Cozy Loungewear{% endblock %}
+
+{% block page_title %}Editar Producto: {{ producto.nombre if producto else 'Desconocido' }}{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 md:p-8 max-w-2xl mx-auto">
+        {# Usamos 'form_data' para repoblar si hubo error, o 'producto' para la carga inicial #}
+        {% set data_source = form_data if form_data else producto %}
+        <form method="POST"> 
+            
+            <div class="mb-5">
+                <label for="nombre" class="block mb-2 text-sm font-medium text-gray-900">Nombre del Producto <span class="text-red-500">*</span></label>
+                <input type="text" id="nombre" name="nombre" value="{{ data_source.nombre if data_source else '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5" required>
+            </div>
+
+            <div class="mb-5">
+                <label for="descripcion" class="block mb-2 text-sm font-medium text-gray-900">Descripción</label>
+                <textarea id="descripcion" name="descripcion" rows="4" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-[#D96A9E] focus:border-[#D96A9E]">{{ data_source.descripcion if data_source and data_source.descripcion is not none else '' }}</textarea>
+            </div>
+
+            <div class="grid md:grid-cols-2 md:gap-6">
+                <div class="mb-5">
+                    <label for="precio_venta" class="block mb-2 text-sm font-medium text-gray-900">Precio de Venta ($) <span class="text-red-500">*</span></label>
+                    <input type="number" id="precio_venta" name="precio_venta" value="{{ data_source.precio_venta if data_source else '' }}" step="0.01" min="0" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5" required>
+                </div>
+                <div class="mb-5">
+                    <label for="codigo_barras" class="block mb-2 text-sm font-medium text-gray-900">Código de Barras</label>
+                    <input type="text" id="codigo_barras" name="codigo_barras" value="{{ data_source.codigo_barras if data_source and data_source.codigo_barras is not none else '' }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5">
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 md:gap-6">
+                <div class="mb-5">
+                    <label for="cantidad" class="block mb-2 text-sm font-medium text-gray-900">Cantidad en Stock <span class="text-red-500">*</span></label>
+                    <input type="number" id="cantidad" name="cantidad" value="{{ data_source.cantidad if data_source else '' }}" min="0" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5" required>
+                </div>
+                <div class="mb-5">
+                    <label for="stock_minimo" class="block mb-2 text-sm font-medium text-gray-900">Stock Mínimo <span class="text-red-500">*</span></label>
+                    <input type="number" id="stock_minimo" name="stock_minimo" value="{{ data_source.stock_minimo if data_source else '5' }}" min="0" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5" required>
+                </div>
+            </div>
+            
+            {# Los mensajes flash se mostrarán a través de base.html o localmente si se implementa aquí #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mt-4">
+                    {% for category, message in messages %}
+                        <div class="flash-message-container"> {# Para el script de base.html #}
+                            <div class="flash-message-item p-4 mb-3 text-sm rounded-lg shadow 
+                                        {% if category == 'error' %} bg-red-100 border border-red-400 text-red-700 
+                                        {% elif category == 'success' %} bg-green-100 border border-green-400 text-green-700 
+                                        {% else %} bg-blue-100 border border-blue-400 text-blue-700 
+                                        {% endif %}" role="alert">
+                                <span class="font-medium">
+                                    {% if category == 'error' %}Error:
+                                    {% elif category == 'success' %}Éxito:
+                                    {% else %}Info:
+                                    {% endif %}
+                                </span> {{ message }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="flex items-center justify-end mt-6">
+                <a href="{{ url_for('productos') }}" class="text-gray-700 hover:bg-gray-100 border border-gray-300 focus:ring-4 focus:outline-none focus:ring-gray-200 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-3">
+                    Cancelar
+                </a>
+                <button type="submit" class="text-white bg-[#D96A9E] hover:bg-[#c75d8f] focus:ring-4 focus:outline-none focus:ring-pink-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" fill="currentColor" viewBox="0 0 256 256" class="inline mr-1 -ml-1 align-text-bottom"><path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"></path></svg>
+                    Actualizar Producto
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

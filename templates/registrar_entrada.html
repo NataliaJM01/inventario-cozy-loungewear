@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Entrada de Producto - Inventario Cozy Loungewear{% endblock %}
+
+{% block page_title %}Registrar Entrada de Mercancía{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm max-w-lg mx-auto">
+        <form method="POST" action="{{ url_for('registrar_entrada') }}">
+            
+            <div class="mb-5">
+                <label for="producto_id" class="block mb-2 text-sm font-medium text-gray-900 dark:text-slate-200">Producto <span class="text-red-500">*</span></label>
+                <select id="producto_id" name="producto_id" class="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-200 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5" required>
+                    <option value="" disabled {% if not form_data.producto_id %}selected{% endif %}>Seleccione un producto...</option>
+                    {% for producto in productos %} {# 'productos' debe ser pasado desde app.py con id y nombre #}
+                        <option value="{{ producto.id }}" {% if form_data.producto_id == producto.id|string %}selected{% endif %}>
+                            {{ producto.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-5">
+                <label for="cantidad_comprada" class="block mb-2 text-sm font-medium text-gray-900 dark:text-slate-200">Cantidad Comprada en el Lote <span class="text-red-500">*</span></label>
+                <input type="number" id="cantidad_comprada" name="cantidad_comprada" value="{{ form_data.cantidad_comprada if form_data else '' }}" min="1" class="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-200 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5" placeholder="Ej: 50" required>
+            </div>
+
+            <div class="mb-5">
+                <label for="costo_total_lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-slate-200">Costo Total del Lote (COP) <span class="text-red-500">*</span></label>
+                <input type="number" id="costo_total_lote" name="costo_total_lote" value="{{ form_data.costo_total_lote if form_data else '' }}" min="0" step="any" class="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-200 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5" placeholder="Ej: 2500000" required>
+                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">El costo unitario se calculará automáticamente.</p>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div id="flashMessagesInPageForEntrada" class="mt-4 mb-4">
+                        {% for category, message in messages %}
+                            <div class="flash-message-item p-4 text-sm rounded-lg shadow-lg 
+                                        {% if category == 'error' %} bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 
+                                        {% elif category == 'success' %} bg-green-100 dark:bg-green-800 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 
+                                        {% else %} bg-blue-100 dark:bg-blue-800 border border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-200 
+                                        {% endif %}" role="alert">
+                                <span class="font-medium">
+                                    {% if category == 'error' %}Error:
+                                    {% elif category == 'success' %}Éxito:
+                                    {% else %}Info:
+                                    {% endif %}
+                                </span> {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="flex items-center justify-end mt-6">
+                <a href="{{ url_for('movimientos') }}" class="text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 border border-gray-300 dark:border-slate-600 focus:ring-4 focus:outline-none focus:ring-gray-200 dark:focus:ring-slate-600 font-medium rounded-lg text-sm px-5 py-2.5 text-center mr-3">
+                    Cancelar
+                </a>
+                <button type="submit" class="text-white bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-500 focus:ring-4 focus:outline-none focus:ring-green-300 dark:focus:ring-green-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" fill="currentColor" viewBox="0 0 256 256" class="inline mr-1 -ml-1 align-text-bottom"><path d="M208,88H168V48a8,8,0,0,0-16,0V88H112V48a8,8,0,0,0-16,0V88H56A16,16,0,0,0,40,104v96a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V104A16,16,0,0,0,200,88Zm0,112H56V104H200v96Zm-40-64a8,8,0,0,1-8,8H136v24a8,8,0,0,1-16,0V144H96a8,8,0,0,1,0-16h24V104a8,8,0,0,1,16,0v24h24A8,8,0,0,1,168,136Z"></path></svg>
+                    Registrar Entrada
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+{# Podríamos añadir JavaScript para validaciones adicionales si es necesario #}
+{% endblock %}

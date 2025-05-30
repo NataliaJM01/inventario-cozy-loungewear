@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Inventario Cozy Loungewear{% endblock %}
+
+{% block page_title %}Dashboard Principal{% endblock %}
+
+{% block content %}
+<div class="p-4"> 
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flashMessagesInPageForDashboard" class="mb-4"> 
+                {% for category, message in messages %}
+                    <div class="flash-message-item p-4 text-sm rounded-lg shadow-lg 
+                                {% if category == 'error' %} bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 
+                                {% elif category == 'success' %} bg-green-100 dark:bg-green-800 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 
+                                {% else %} bg-blue-100 dark:bg-blue-800 border border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-200
+                                {% endif %}" role="alert">
+                        <span class="font-medium">
+                            {% if category == 'error' %}Error:
+                            {% elif category == 'success' %}Éxito:
+                            {% else %}Info:
+                            {% endif %}
+                        </span> {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {# Fila de Tarjetas de Resumen Superiores #}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"> 
+        <div class="flex flex-col gap-1 rounded-xl p-5 bg-[#f4f1f1] dark:bg-slate-800 shadow dark:border dark:border-slate-700">
+            <p class="text-[#171312] dark:text-slate-300 text-sm font-medium leading-normal">Ingresos Mensuales</p>
+            <p class="text-[#171312] dark:text-slate-100 tracking-tight text-3xl font-bold leading-tight">{{ ingresos_mensuales_valor if ingresos_mensuales_valor else "COP 0" }}</p> 
+            <p class="text-xs text-gray-500 dark:text-slate-400 leading-normal">Neto Estimado (Mes Actual)</p>
+        </div>
+
+        <div class="flex flex-col gap-1 rounded-xl p-5 bg-[#f4f1f1] dark:bg-slate-800 shadow dark:border dark:border-slate-700">
+            <p class="text-[#171312] dark:text-slate-300 text-sm font-medium leading-normal">Valor del Stock Actual</p>
+            <p class="text-[#171312] dark:text-slate-100 tracking-tight text-3xl font-bold leading-tight">{{ valor_stock_actual if valor_stock_actual else "COP 0" }}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400 leading-normal">Estimado a Precio de Venta</p>
+        </div>
+
+        <div class="flex flex-col gap-1 rounded-xl p-5 bg-[#f4f1f1] dark:bg-slate-800 shadow dark:border dark:border-slate-700">
+            <p class="text-[#171312] dark:text-slate-300 text-sm font-medium leading-normal">Ingresos Anuales</p>
+            <p class="text-[#171312] dark:text-slate-100 tracking-tight text-3xl font-bold leading-tight">{{ ingresos_anuales_valor if ingresos_anuales_valor else "COP 0" }}</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400 leading-normal">Neto Estimado (Año Actual)</p>
+        </div>
+    </div>
+
+    {# Fila para Gráficos u Otra Información Detallada #}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div class="flex flex-col gap-2 rounded-xl border border-[#e4dedd] dark:border-slate-700 p-6 bg-white dark:bg-slate-800 shadow">
+            <p class="text-[#171312] dark:text-slate-200 text-base font-medium leading-normal">Tendencia de Ventas</p>
+            <p class="text-[#171312] dark:text-slate-100 tracking-light text-[32px] font-bold leading-tight truncate">Análisis Pendiente</p>
+            <div class="flex gap-1">
+                <p class="text-[#836c67] dark:text-slate-400 text-xs font-normal leading-normal">Últimos meses</p>
+            </div>
+            <div class="flex min-h-[180px] flex-1 flex-col gap-8 py-4 items-center justify-center text-gray-400 dark:text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="opacity-50" viewBox="0 0 256 256"><path d="M232,200V48a24,24,0,0,0-24-24H48A24,24,0,0,0,24,48V200a24,24,0,0,0,24,24H208A24,24,0,0,0,232,200ZM48,40H208a8,8,0,0,1,8,8V71.46l-41.12,38.51a12,12,0,0,0-16.1.2L128,140.49,89.11,106.1a12,12,0,0,0-17.44-1.16L40,132.36V48A8,8,0,0,1,48,40ZM216,208H48a8,8,0,0,1-8-8V147.64l32.91-30.64a4,4,0,0,1,5.82.38l38.83,35.59,32-30a4,4,0,0,1,5.36-.06L216,168.54V200A8,8,0,0,1,208,208Z"></path></svg>
+                <p class="text-sm">Gráfico de tendencia de ventas próximamente</p>
+            </div>
+        </div>
+
+        <div class="flex flex-col gap-2 rounded-xl border border-[#e4dedd] dark:border-slate-700 p-6 bg-white dark:bg-slate-800 shadow">
+            <p class="text-[#171312] dark:text-slate-200 text-base font-medium leading-normal">Stock Actual</p>
+            <p class="text-red-600 dark:text-red-400 tracking-light text-[32px] font-bold leading-tight truncate">
+                {{ productos_bajo_stock_alerta if productos_bajo_stock_alerta is not none else 0 }}
+                <span class="text-sm font-medium text-gray-600 dark:text-slate-400">en alerta</span>
+            </p>
+            <div class="flex gap-1">
+                <p class="text-[#836c67] dark:text-slate-400 text-xs font-normal leading-normal">Productos próximos a agotarse (Top 10)</p>
+            </div>
+            <div class="grid gap-y-2 items-center py-3 h-auto mt-2"> 
+                {% if productos_stock_critico %}
+                    {% for producto in productos_stock_critico %}
+                    {% set cantidad = producto.cantidad %}
+                    {% set stock_minimo = producto.stock_minimo %}
+                    {% set umbral_advertencia = stock_minimo * 1.3 %}
+                    {% set color_semaforo = '#FBCADD' %} 
+                    {% if cantidad <= stock_minimo %}{% set color_semaforo = '#F955A0' %}{% elif cantidad <= umbral_advertencia %}{% set color_semaforo = '#F9A6C5' %}{% endif %}
+                    <div class="grid grid-cols-6 gap-x-2 items-center text-xs">
+                        <p class="text-[#171312] dark:text-slate-200 font-medium leading-normal truncate col-span-2" title="{{ producto.nombre }}">{{ producto.nombre }}</p>
+                        <div class="h-2.5 bg-gray-200 dark:bg-slate-700 rounded-full flex-1 col-span-3">
+                            {% set stock_percentage = (cantidad * 100 / stock_minimo) if stock_minimo > 0 else (100 if cantidad > 0 else 0) %}
+                            {% if stock_percentage > 100 %}{% set stock_percentage = 100 %}{% endif %}
+                            {% if stock_percentage < 0 %}{% set stock_percentage = 0 %}{% endif %}
+                            <div class="h-2.5 rounded-full" style="width: {{ stock_percentage }}%; background-color: {{ color_semaforo }};"></div>
+                        </div>
+                        <p class="font-semibold 
+                           {% if cantidad <= stock_minimo %}text-pink-600 dark:text-pink-400
+                           {% elif cantidad <= umbral_advertencia %}text-pink-400 dark:text-pink-300
+                           {% else %}text-gray-500 dark:text-slate-400{% endif %} text-right col-span-1">
+                            {{ cantidad }}<span class="text-gray-400 dark:text-slate-500 text-[10px]">/{{ stock_minimo }}</span>
+                        </p>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-center text-gray-500 dark:text-slate-400 text-sm py-4">¡Todo el stock está en orden!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 flex flex-col gap-2 rounded-xl border border-[#e4dedd] dark:border-slate-700 p-6 bg-white dark:bg-slate-800 shadow">
+        <div class="flex flex-wrap justify-between items-center mb-3 gap-2">
+            <p class="text-[#171312] dark:text-slate-200 text-base font-medium leading-normal">Últimos Movimientos</p>
+            <div class="flex gap-x-2">
+                <a href="{{ url_for('registrar_entrada') }}" class="bg-green-100 hover:bg-green-200 dark:bg-green-700 dark:hover:bg-green-600 text-green-700 dark:text-green-100 text-xs font-semibold py-1.5 px-3 rounded-lg inline-flex items-center transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256" class="mr-1.5"><path d="M208,88H168V48a8,8,0,0,0-16,0V88H112V48a8,8,0,0,0-16,0V88H56A16,16,0,0,0,40,104v96a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V104A16,16,0,0,0,200,88Zm0,112H56V104H200v96Zm-40-64a8,8,0,0,1-8,8H136v24a8,8,0,0,1-16,0V144H96a8,8,0,0,1,0-16h24V104a8,8,0,0,1,16,0v24h24A8,8,0,0,1,168,136Z"></path></svg>
+                    Nueva Entrada
+                </a>
+                <a href="{{ url_for('registrar_salida') }}" class="bg-red-100 hover:bg-red-200 dark:bg-red-700 dark:hover:bg-red-600 text-red-700 dark:text-red-100 text-xs font-semibold py-1.5 px-3 rounded-lg inline-flex items-center transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256" class="mr-1.5"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.49a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg>
+                    Nueva Salida
+                </a>
+            </div>
+        </div>
+        <div class="space-y-3">
+            {% if ultimos_movimientos %}
+                {% for mov in ultimos_movimientos %}
+                <div class="flex items-center justify-between text-xs border-b border-gray-100 dark:border-slate-700 pb-2 last:border-b-0 last:pb-0">
+                    <div class="flex items-center">
+                        {% if mov.tipo == 'Entrada' %}
+                            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-green-100 dark:bg-green-800 dark:text-green-200 text-green-700 flex items-center justify-center mr-2.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256"><path d="M208,88H168V48a8,8,0,0,0-16,0V88H112V48a8,8,0,0,0-16,0V88H56A16,16,0,0,0,40,104v96a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V104A16,16,0,0,0,200,88Zm0,112H56V104H200v96Zm-40-64a8,8,0,0,1-8,8H136v24a8,8,0,0,1-16,0V144H96a8,8,0,0,1,0-16h24V104a8,8,0,0,1,16,0v24h24A8,8,0,0,1,168,136Z"></path></svg>
+                            </span>
+                        {% elif mov.tipo == 'Salida' %}
+                            <span class="flex-shrink-0 w-7 h-7 rounded-full bg-red-100 dark:bg-red-800 dark:text-red-200 text-red-700 flex items-center justify-center mr-2.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 256 256"><path d="M224.49,136.49l-72,72a12,12,0,0,1-17-17L187,140H40a12,12,0,0,1,0-24H187L135.51,64.49a12,12,0,0,1,17-17l72,72A12,12,0,0,1,224.49,136.49Z"></path></svg>
+                            </span>
+                        {% endif %}
+                        <div>
+                            <p class="font-medium text-gray-800 dark:text-slate-200 truncate w-40" title="{{ mov.nombre_producto }}">{{ mov.nombre_producto }}</p>
+                            <p class="text-gray-500 dark:text-slate-400">{{ mov.fecha.split(' ')[0] }}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-semibold {% if mov.tipo == 'Entrada' %}text-green-600 dark:text-green-400{% else %}text-red-600 dark:text-red-400{% endif %}">
+                            {{ '+' if mov.tipo == 'Entrada' else '-' }}{{ mov.cantidad }}
+                        </p>
+                        <p class="text-gray-500 dark:text-slate-400">{{ mov.tipo }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+                 <div class="pt-2 text-center">
+                     <a href="{{ url_for('movimientos') }}" class="text-xs text-[#D96A9E] hover:underline font-semibold">Ver todos los movimientos...</a>
+                 </div>
+            {% else %}
+                <p class="text-center text-gray-500 dark:text-slate-400 text-sm py-4">No hay movimientos recientes.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+{# Si reactivas el gráfico de Sales Trend con Chart.js, el script iría aquí #}
+{% endblock %}

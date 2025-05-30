@@ -1,0 +1,42 @@
+/* static/css/style.css */
+
+/* Estilos globales muy básicos que Tailwind podría no cubrir por defecto, o overrides.
+   Por ahora, lo mantenemos mínimo. Tailwind debería manejar la mayoría. */
+
+body {
+    /* La fuente principal (Lexend) ya se define en base.html con la etiqueta <link> de Google Fonts
+       y se aplica con style='font-family: Lexend, "Noto Sans", sans-serif;' en el body.
+       Podemos añadir anti-aliasing para mejorar la renderización del texto si el navegador no lo hace por defecto. */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* El color de fondo y el color de texto principal también se definen en base.html con clases de Tailwind. */
+}
+
+/* ---------------------------------------------------------------------------
+   Estilos Personalizados Adicionales (si son necesarios)
+   --------------------------------------------------------------------------- */
+
+/* Aquí podrías añadir estilos si encuentras algo que no puedes o no quieres
+   hacer directamente con clases de Tailwind.
+
+   Por ejemplo, si tuvieras un gráfico SVG muy complejo y quisieras estilizar
+   sus partes internas con CSS específico:
+   .mi-grafico-svg .linea-principal {
+       stroke: #D96A9E;
+       stroke-width: 2px;
+   }
+   .mi-grafico-svg .punto-dato {
+       fill: #E58EAA;
+   }
+*/
+
+/* En tu maqueta, el estilo del enlace activo en la barra lateral se maneja
+   directamente en base.html con clases condicionales de Tailwind:
+   "{% if request.endpoint == 'dashboard' %}bg-[#f4f1f1] text-[#D96A9E] font-medium{% else %}...{% endif %}"
+   Así que no necesitarías replicar eso aquí a menos que prefieras un enfoque diferente.
+*/
+
+/* Si más adelante necesitas estilos para formularios que el plugin de Tailwind Forms no cubra
+   a tu gusto, podrías añadirlos aquí. */
+
+/* Mantén este archivo lo más ligero posible y prioriza el uso de las utilidades de Tailwind. */

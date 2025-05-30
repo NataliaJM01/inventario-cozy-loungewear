@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Directorio de Proveedores - Inventario Cozy Loungewear{% endblock %}
+
+{% block page_title %}Directorio de Proveedores{% endblock %}
+
+{% block page_actions %}
+    <a href="{{ url_for('agregar_proveedor') }}" class="bg-[#D96A9E] hover:bg-[#c75d8f] text-white text-sm font-medium py-2 px-4 rounded-lg inline-flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" fill="currentColor" viewBox="0 0 256 256" class="mr-2"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path></svg>
+        Añadir Nuevo Proveedor
+    </a>
+{% endblock %}
+
+{% block content %}
+<div class="p-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flashMessagesInPageForProveedores" class="mb-4"> 
+                {% for category, message in messages %}
+                    <div class="flash-message-item p-4 text-sm rounded-lg shadow-lg 
+                                {% if category == 'error' %} bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 
+                                {% elif category == 'success' %} bg-green-100 dark:bg-green-800 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 
+                                {% else %} bg-blue-100 dark:bg-blue-800 border border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-200 
+                                {% endif %}" role="alert">
+                        <span class="font-medium">
+                            {% if category == 'error' %}Error:
+                            {% elif category == 'success' %}Éxito:
+                            {% else %}Info:
+                            {% endif %}
+                        </span> {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="mb-6 bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+        <form method="GET" action="{{ url_for('proveedores_lista') }}" id="filtrosProveedoresForm">
+            <div class="flex flex-wrap md:flex-nowrap items-end gap-3">
+                <div class="flex-grow w-full md:w-auto">
+                    <label for="search_query_proveedor" class="block mb-1 text-xs font-medium text-gray-700 dark:text-slate-300">Buscar Proveedor</label>
+                    <input type="text" name="q_proveedor" id="search_query_proveedor" value="{{ search_query if search_query else '' }}" class="bg-gray-50 dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-200 text-sm rounded-lg focus:ring-[#D96A9E] focus:border-[#D96A9E] block w-full p-2.5" placeholder="Nombre, teléfono, correo...">
+                </div>
+                <div class="flex gap-x-3 flex-shrink-0">
+                    {% if search_query %}
+                    <a href="{{ url_for('proveedores_lista') }}" class="py-2.5 px-4 text-sm font-medium text-gray-900 dark:text-slate-200 focus:outline-none bg-white dark:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600 hover:text-[#D96A9E] focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-slate-600 inline-flex items-center" title="Limpiar búsqueda">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 256 256" class="mr-1 -ml-1 md:mr-2"><path d="M204,28H52a12,12,0,0,0-12,12V216a12,12,0,0,0,12,12H204a12,12,0,0,0,12-12V40A12,12,0,0,0,204,28Zm-30.34,168L128,150.34,82.34,196,68,181.66,113.66,136,68,90.34,82.34,76,128,121.66,173.66,76,188,90.34,142.34,136,188,181.66Z"></path></svg>
+                        <span class="hidden md:inline">Limpiar</span>
+                    </a>
+                    {% endif %}
+                    <button type="submit" class="p-2.5 px-5 text-sm font-medium text-white bg-[#D96A9E] rounded-lg border border-[#D96A9E] hover:bg-[#c75d8f] focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 inline-flex items-center">
+                        <svg class="w-5 h-5 mr-1 -ml-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <span class="hidden md:inline">Buscar</span>
+                        <span class="md:hidden">Buscar</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden mt-8">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-700 dark:text-slate-300">
+                <thead class="text-xs text-[#171312] dark:text-slate-200 uppercase bg-gray-50 dark:bg-slate-700">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 min-w-[150px]">Nombre</th>
+                        <th scope="col" class="px-6 py-3">Teléfono</th>
+                        <th scope="col" class="px-6 py-3">Correo</th>
+                        <th scope="col" class="px-6 py-3 min-w-[200px]">Descripción</th>
+                        <th scope="col" class="px-6 py-3">Registrado</th>
+                        <th scope="col" class="px-6 py-3 text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if proveedores %}
+                        {% for proveedor in proveedores %}
+                        <tr class="bg-white dark:bg-slate-800 border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50">
+                            <td class="px-6 py-4 font-medium text-gray-900 dark:text-slate-200 whitespace-nowrap">{{ proveedor.nombre }}</td>
+                            <td class="px-6 py-4">{{ proveedor.telefono }}</td>
+                            <td class="px-6 py-4">{{ proveedor.correo if proveedor.correo else 'N/A' }}</td>
+                            <td class="px-6 py-4 text-xs text-gray-600 dark:text-slate-400">{{ proveedor.descripcion | truncate(80) if proveedor.descripcion else 'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">{{ proveedor.fecha_registro.split(' ')[0] if proveedor.fecha_registro else 'N/A' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                <a href="{{ url_for('editar_proveedor', id=proveedor.id) }}" class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mr-3 inline-block" title="Editar Proveedor">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" fill="currentColor" viewBox="0 0 256 256"><path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"></path></svg>
+                                </a>
+                                <button type="button" class="delete-proveedor-btn text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 inline-block" title="Eliminar Proveedor"
+                                        data-proveedor-id="{{ proveedor.id }}" 
+                                        data-proveedor-name="{{ proveedor.nombre }}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" fill="currentColor" viewBox="0 0 256 256"><path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"></path></svg>
+                                </button>
+                                <form id="delete-proveedor-form-{{ proveedor.id }}" action="{{ url_for('eliminar_proveedor', id=proveedor.id) }}" method="POST" class="hidden"></form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
+                            {% if search_query %}
+                                No se encontraron proveedores que coincidan con tu búsqueda "{{ search_query }}".
+                            {% else %}
+                                No hay proveedores registrados todavía.
+                                <a href="{{ url_for('agregar_proveedor') }}" class="text-[#D96A9E] hover:underline font-medium">¡Añade tu primer proveedor!</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="deleteProveedorModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden transition-opacity duration-300 ease-in-out opacity-0">
+    <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md transform transition-all duration-300 ease-in-out scale-95">
+        <div class="flex justify-between items-center pb-3 border-b border-gray-200 dark:border-slate-700">
+            <h3 class="text-xl font-semibold text-gray-900 dark:text-slate-200">Confirmar Eliminación</h3>
+            <button id="closeDeleteProveedorModalBtn" type="button" class="text-gray-400 dark:text-slate-400 bg-transparent hover:bg-gray-200 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-slate-200 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center">
+                <svg aria-hidden="true" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                <span class="sr-only">Cerrar modal</span>
+            </button>
+        </div>
+        <div class="py-4">
+            <p class="text-gray-600 dark:text-slate-300 mb-2">¿Estás segura de que deseas eliminar al proveedor "<strong id="proveedorNameToDelete" class="font-semibold"></strong>"?</p>
+            <p class="text-xs text-gray-500 dark:text-slate-400">Esta acción no se puede deshacer.</p>
+        </div>
+        
+        <div class="pt-3 border-t border-gray-200 dark:border-slate-700">
+            <div class="mb-4">
+                <label for="rememberDeleteProveedorChoice" class="flex items-center text-sm text-gray-600 dark:text-slate-300 cursor-pointer">
+                    <input type="checkbox" id="rememberDeleteProveedorChoice" class="mr-2 h-4 w-4 text-[#D96A9E] bg-gray-100 dark:bg-slate-600 border-gray-300 dark:border-slate-500 rounded focus:ring-[#D96A9E] dark:focus:ring-offset-slate-800 focus:ring-2">
+                    No volver a preguntar (para esta sesión)
+                </label>
+            </div>
+
+            <div class="flex justify-end gap-x-3">
+                <button id="cancelDeleteProveedorBtn" type="button" class="py-2 px-4 text-sm font-medium text-gray-900 dark:text-slate-200 focus:outline-none bg-white dark:bg-slate-700 rounded-lg border border-gray-300 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-600 hover:text-[#D96A9E] focus:z-10 focus:ring-4 focus:ring-gray-200 dark:focus:ring-slate-600">Cancelar</button>
+                <button id="confirmDeleteProveedorBtn" type="button" class="py-2 px-4 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 focus:ring-4 focus:outline-none focus:ring-red-300 dark:focus:ring-red-800">Sí, Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts_extra %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalOverlay = document.getElementById('modalOverlay'); 
+    
+    const deleteProveedorModal = document.getElementById('deleteProveedorModal');
+    const modalProveedorContent = deleteProveedorModal ? deleteProveedorModal.querySelector('.transform') : null;
+    const closeDeleteProveedorModalBtn = document.getElementById('closeDeleteProveedorModalBtn');
+    const cancelDeleteProveedorBtn = document.getElementById('cancelDeleteProveedorBtn');
+    const confirmDeleteProveedorBtn = document.getElementById('confirmDeleteProveedorBtn');
+    const proveedorNameToDeleteSpan = document.getElementById('proveedorNameToDelete');
+    const rememberDeleteProveedorChoice = document.getElementById('rememberDeleteProveedorChoice');
+    let currentProveedorIdToDelete = null;
+
+    function openProveedorModal() {
+        if (deleteProveedorModal && modalOverlay && modalProveedorContent) {
+            modalOverlay.classList.add('active');
+            deleteProveedorModal.classList.remove('hidden');
+            void deleteProveedorModal.offsetWidth; 
+            deleteProveedorModal.classList.remove('opacity-0');
+            modalProveedorContent.classList.remove('scale-95');
+        }
+    }
+
+    function closeProveedorModal() {
+        if (deleteProveedorModal && modalOverlay && modalProveedorContent) {
+            deleteProveedorModal.classList.add('opacity-0');
+            modalProveedorContent.classList.add('scale-95');
+            modalOverlay.classList.remove('active');
+            setTimeout(() => {
+                deleteProveedorModal.classList.add('hidden');
+            }, 300);
+            currentProveedorIdToDelete = null;
+            if(rememberDeleteProveedorChoice) rememberDeleteProveedorChoice.checked = false;
+        }
+    }
+
+    document.querySelectorAll('.delete-proveedor-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            currentProveedorIdToDelete = this.dataset.proveedorId;
+            const proveedorName = this.dataset.proveedorName;
+            if (proveedorNameToDeleteSpan) proveedorNameToDeleteSpan.textContent = proveedorName;
+
+            if (sessionStorage.getItem('skipDeleteProveedorConfirmation') === 'true') {
+                const formToSubmit = document.getElementById('delete-proveedor-form-' + currentProveedorIdToDelete);
+                if (formToSubmit) {
+                    formToSubmit.submit();
+                }
+            } else {
+                openProveedorModal();
+            }
+        });
+    });
+
+    if (closeDeleteProveedorModalBtn) closeDeleteProveedorModalBtn.addEventListener('click', closeProveedorModal);
+    if (cancelDeleteProveedorBtn) cancelDeleteProveedorBtn.addEventListener('click', closeProveedorModal);
+    if (modalOverlay) { 
+        modalOverlay.addEventListener('click', function(event) {
+            if (event.target === modalOverlay) { 
+                closeProveedorModal();
+            }
+        });
+    }
+
+    if (confirmDeleteProveedorBtn) {
+        confirmDeleteProveedorBtn.addEventListener('click', function() {
+            if (currentProveedorIdToDelete) {
+                if (rememberDeleteProveedorChoice && rememberDeleteProveedorChoice.checked) {
+                    sessionStorage.setItem('skipDeleteProveedorConfirmation', 'true');
+                }
+                const formToSubmit = document.getElementById('delete-proveedor-form-' + currentProveedorIdToDelete);
+                if (formToSubmit) {
+                    formToSubmit.submit();
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
