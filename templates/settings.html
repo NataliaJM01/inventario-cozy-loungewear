@@ -9,21 +9,15 @@
 
     <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-slate-200 mb-4">Apariencia</h3>
-        <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-gray-700 dark:text-slate-300">Modo Oscuro</span>
             <label for="darkModeToggle" class="inline-flex relative items-center cursor-pointer">
                 <input type="checkbox" value="" id="darkModeToggle" class="sr-only peer">
                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-pink-300 dark:peer-focus:ring-pink-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[#D96A9E]"></div>
             </label>
         </div>
-        <p class="text-xs text-gray-500 dark:text-slate-400 mb-4">Activa el modo oscuro para una experiencia visual diferente.</p>
-        
-        <div class="flex items-center justify-end">
-            <span id="appearanceSaveStatus" class="text-xs text-green-600 dark:text-green-400 mr-3"></span>
-            <button id="saveAppearanceButton" type="button" class="text-white bg-[#D96A9E] hover:bg-[#c75d8f] focus:ring-4 focus:outline-none focus:ring-pink-300 dark:focus:ring-pink-800 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
-                Guardar Cambios
-            </button>
-        </div>
+        <p class="mt-2 text-xs text-gray-500 dark:text-slate-400">Activa el modo oscuro para una experiencia visual diferente.</p>
+        {# El botón de "Guardar Cambios" para el tema se eliminó, el cambio es instantáneo y se guarda al accionar el toggle #}
     </div>
 
     <div class="bg-white dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
@@ -62,78 +56,38 @@
 {% block scripts_extra %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    console.log("DEBUG: Settings page script loaded.");
     const darkModeToggle = document.getElementById('darkModeToggle');
-    const saveAppearanceButton = document.getElementById('saveAppearanceButton');
-    const appearanceSaveStatus = document.getElementById('appearanceSaveStatus');
+    console.log("DEBUG (settings.html): Script loaded. darkModeToggle found:", darkModeToggle);
 
-    function applyVisualTheme(isDark) {
-        console.log("DEBUG: applyVisualTheme called. isDark:", isDark);
-        if (isDark) {
-            document.documentElement.classList.add('dark');
-            console.log("DEBUG: Added 'dark' class to <html>");
-        } else {
-            document.documentElement.classList.remove('dark');
-            console.log("DEBUG: Removed 'dark' class from <html>");
-        }
-    }
-
-    function initializeThemeAndToggle() {
-        console.log("DEBUG: initializeThemeAndToggle called.");
-        let isCurrentlyDark;
-        const storedTheme = localStorage.getItem('theme');
-        console.log("DEBUG: Theme from localStorage:", storedTheme);
-
-        if (storedTheme === 'dark') {
-            isCurrentlyDark = true;
-        } else if (storedTheme === 'light') {
-            isCurrentlyDark = false;
-        } else { 
-            isCurrentlyDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            console.log("DEBUG: No theme in localStorage, system prefers dark:", isCurrentlyDark);
-        }
-        
-        // La aplicación visual del tema al cargar la página ya la hace base.html
-        // Aquí solo sincronizamos el interruptor.
+    // Función para establecer el estado del interruptor basado en el tema actual del <html>
+    // El script en base.html ya se encarga de aplicar el tema al <html> al cargar.
+    function syncToggleWithTheme() {
         if (darkModeToggle) {
-            darkModeToggle.checked = isCurrentlyDark;
-            console.log("DEBUG: darkModeToggle.checked set to:", isCurrentlyDark);
+            const isHtmlDark = document.documentElement.classList.contains('dark');
+            darkModeToggle.checked = isHtmlDark;
+            console.log("DEBUG (settings.html): syncToggleWithTheme - html.classList.contains('dark'):", isHtmlDark, "Toggle.checked set to:", darkModeToggle.checked);
         } else {
-            console.log("DEBUG: darkModeToggle not found.");
+            console.log("DEBUG (settings.html): syncToggleWithTheme - darkModeToggle not found.");
         }
     }
 
-    initializeThemeAndToggle();
+    // Sincronizar el interruptor cuando la página de configuración carga
+    syncToggleWithTheme();
 
+    // Listener para el cambio en el toggle de modo oscuro
     if (darkModeToggle) {
         darkModeToggle.addEventListener('change', function() {
-            console.log("DEBUG: darkModeToggle changed. Checked:", this.checked);
-            applyVisualTheme(this.checked); // Aplicar cambio visual inmediatamente
-            if (appearanceSaveStatus) appearanceSaveStatus.textContent = ''; 
-        });
-    }
-
-    if (saveAppearanceButton && darkModeToggle) {
-        saveAppearanceButton.addEventListener('click', function() {
-            const themeToSave = darkModeToggle.checked ? 'dark' : 'light';
-            console.log("DEBUG: saveAppearanceButton clicked. Theme to save:", themeToSave);
-            localStorage.setItem('theme', themeToSave);
-            console.log("DEBUG: Theme saved to localStorage:", localStorage.getItem('theme'));
-            
-            // No es necesario llamar a applyVisualTheme aquí de nuevo,
-            // ya que el cambio visual se hizo al cambiar el toggle.
-            // El script en base.html se encargará de aplicar el tema correcto en la próxima carga de página.
-
-            if (appearanceSaveStatus) {
-                appearanceSaveStatus.textContent = '¡Preferencias guardadas!';
-                setTimeout(() => {
-                    appearanceSaveStatus.textContent = '';
-                }, 2000);
+            console.log("DEBUG (settings.html): darkModeToggle changed. New checked state:", this.checked);
+            if (this.checked) { // Interruptor ACTIVADO -> Modo Oscuro
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                console.log("DEBUG (settings.html): Set theme to DARK. localStorage:", localStorage.getItem('theme'));
+            } else { // Interruptor DESACTIVADO -> Modo Día
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light'); 
+                console.log("DEBUG (settings.html): Set theme to LIGHT. localStorage:", localStorage.getItem('theme'));
             }
         });
-    } else {
-        if (!saveAppearanceButton) console.log("DEBUG: saveAppearanceButton not found.");
-        if (!darkModeToggle) console.log("DEBUG: darkModeToggle not found (for save button listener).");
     }
 });
 </script>

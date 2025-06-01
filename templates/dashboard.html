@@ -11,9 +11,9 @@
             <div id="flashMessagesInPageForDashboard" class="mb-4"> 
                 {% for category, message in messages %}
                     <div class="flash-message-item p-4 text-sm rounded-lg shadow-lg 
-                                {% if category == 'error' %} bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 
-                                {% elif category == 'success' %} bg-green-100 dark:bg-green-800 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-200 
-                                {% else %} bg-blue-100 dark:bg-blue-800 border border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-200
+                                {% if category == 'error' %} bg-red-100 dark:bg-red-900 dark:bg-opacity-30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-300 
+                                {% elif category == 'success' %} bg-green-100 dark:bg-green-900 dark:bg-opacity-30 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-300 
+                                {% else %} bg-blue-100 dark:bg-blue-900 dark:bg-opacity-30 border border-blue-400 dark:border-blue-700 text-blue-700 dark:text-blue-300
                                 {% endif %}" role="alert">
                         <span class="font-medium">
                             {% if category == 'error' %}Error:
@@ -27,7 +27,6 @@
         {% endif %}
     {% endwith %}
 
-    {# Fila de Tarjetas de Resumen Superiores #}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"> 
         <div class="flex flex-col gap-1 rounded-xl p-5 bg-[#f4f1f1] dark:bg-slate-800 shadow dark:border dark:border-slate-700">
             <p class="text-[#171312] dark:text-slate-300 text-sm font-medium leading-normal">Ingresos Mensuales</p>
@@ -48,17 +47,11 @@
         </div>
     </div>
 
-    {# Fila para Gráficos u Otra Información Detallada #}
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div class="flex flex-col gap-2 rounded-xl border border-[#e4dedd] dark:border-slate-700 p-6 bg-white dark:bg-slate-800 shadow">
-            <p class="text-[#171312] dark:text-slate-200 text-base font-medium leading-normal">Tendencia de Ventas</p>
-            <p class="text-[#171312] dark:text-slate-100 tracking-light text-[32px] font-bold leading-tight truncate">Análisis Pendiente</p>
-            <div class="flex gap-1">
-                <p class="text-[#836c67] dark:text-slate-400 text-xs font-normal leading-normal">Últimos meses</p>
-            </div>
-            <div class="flex min-h-[180px] flex-1 flex-col gap-8 py-4 items-center justify-center text-gray-400 dark:text-slate-500">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="opacity-50" viewBox="0 0 256 256"><path d="M232,200V48a24,24,0,0,0-24-24H48A24,24,0,0,0,24,48V200a24,24,0,0,0,24,24H208A24,24,0,0,0,232,200ZM48,40H208a8,8,0,0,1,8,8V71.46l-41.12,38.51a12,12,0,0,0-16.1.2L128,140.49,89.11,106.1a12,12,0,0,0-17.44-1.16L40,132.36V48A8,8,0,0,1,48,40ZM216,208H48a8,8,0,0,1-8-8V147.64l32.91-30.64a4,4,0,0,1,5.82.38l38.83,35.59,32-30a4,4,0,0,1,5.36-.06L216,168.54V200A8,8,0,0,1,208,208Z"></path></svg>
-                <p class="text-sm">Gráfico de tendencia de ventas próximamente</p>
+            <p class="text-[#171312] dark:text-slate-200 text-base font-medium leading-normal">Tendencia de Ventas (Últimos 6 Meses)</p>
+            <div class="flex-grow min-h-[250px] md:min-h-[300px] py-4">
+                <canvas id="salesTrendChart"></canvas>
             </div>
         </div>
 
@@ -78,7 +71,10 @@
                     {% set stock_minimo = producto.stock_minimo %}
                     {% set umbral_advertencia = stock_minimo * 1.3 %}
                     {% set color_semaforo = '#FBCADD' %} 
-                    {% if cantidad <= stock_minimo %}{% set color_semaforo = '#F955A0' %}{% elif cantidad <= umbral_advertencia %}{% set color_semaforo = '#F9A6C5' %}{% endif %}
+                    {% if producto.estado_texto == 'SOLD OUT' %}{% set color_semaforo = '#9CA3AF' %} 
+                    {% elif producto.estado_texto == 'BAJO STOCK' %}{% set color_semaforo = '#F9A6C5' %} 
+                    {% elif cantidad <= stock_minimo %}{% set color_semaforo = '#F955A0' %}{% endif %}
+                    
                     <div class="grid grid-cols-6 gap-x-2 items-center text-xs">
                         <p class="text-[#171312] dark:text-slate-200 font-medium leading-normal truncate col-span-2" title="{{ producto.nombre }}">{{ producto.nombre }}</p>
                         <div class="h-2.5 bg-gray-200 dark:bg-slate-700 rounded-full flex-1 col-span-3">
@@ -88,10 +84,12 @@
                             <div class="h-2.5 rounded-full" style="width: {{ stock_percentage }}%; background-color: {{ color_semaforo }};"></div>
                         </div>
                         <p class="font-semibold 
-                           {% if cantidad <= stock_minimo %}text-pink-600 dark:text-pink-400
-                           {% elif cantidad <= umbral_advertencia %}text-pink-400 dark:text-pink-300
+                           {% if producto.estado_texto == 'SOLD OUT' %}text-gray-500 dark:text-slate-500
+                           {% elif producto.estado_texto == 'BAJO STOCK' %}text-pink-500 dark:text-pink-400
+                           {% elif cantidad <= stock_minimo %}text-pink-600 dark:text-pink-400
                            {% else %}text-gray-500 dark:text-slate-400{% endif %} text-right col-span-1">
                             {{ cantidad }}<span class="text-gray-400 dark:text-slate-500 text-[10px]">/{{ stock_minimo }}</span>
+                            {% if producto.estado_texto == 'SOLD OUT' %}<span class="ml-1 text-gray-500 dark:text-gray-400 font-bold">SOLD OUT</span>{% endif %}
                         </p>
                     </div>
                     {% endfor %}
@@ -155,5 +153,127 @@
 {% endblock %}
 
 {% block scripts_extra %}
-{# Si reactivas el gráfico de Sales Trend con Chart.js, el script iría aquí #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const salesTrendData = {{ sales_trend_data | tojson }};
+    const salesTrendChartCtx = document.getElementById('salesTrendChart');
+
+    if (salesTrendChartCtx && salesTrendData && salesTrendData.length > 0) {
+        const labels = salesTrendData.map(item => item.mes);
+        const ventasData = salesTrendData.map(item => item.ventas);
+        const gananciaData = salesTrendData.map(item => item.ganancia);
+
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        const gridColor = isDarkMode ? 'rgba(100, 116, 139, 0.1)' : 'rgba(203, 213, 225, 0.3)'; // Más sutil
+        const ticksColor = isDarkMode ? '#94a3b8' : '#6b7280'; // slate-400 vs gray-500
+        const legendColor = isDarkMode ? '#e2e8f0' : '#374151'; // slate-200 vs gray-700
+        const titleColor = isDarkMode ? '#cbd5e1' : '#4b5563'; // slate-300 vs gray-600
+
+        new Chart(salesTrendChartCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ventas Totales (COP)',
+                    data: ventasData,
+                    borderColor: '#D96A9E', 
+                    backgroundColor: 'rgba(217, 106, 158, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    yAxisID: 'yVentas',
+                    pointBackgroundColor: '#D96A9E',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#D96A9E'
+                }, {
+                    label: 'Ganancia Neta (COP)',
+                    data: gananciaData,
+                    borderColor: isDarkMode ? '#64748b' : '#9CA3AF', // slate-500 dark / gray-400 light
+                    backgroundColor: isDarkMode ? 'rgba(100, 116, 139, 0.1)' : 'rgba(156, 163, 175, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    yAxisID: 'yGanancia', // Usará el mismo eje Y de ganancia si se muestra
+                    hidden: true, 
+                    pointBackgroundColor: isDarkMode ? '#64748b' : '#9CA3AF',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: isDarkMode ? '#64748b' : '#9CA3AF'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        grid: { color: gridColor, borderColor: gridColor },
+                        ticks: { color: ticksColor, font: { size: 10 } }
+                    },
+                    yVentas: { // Eje Y principal para Ventas
+                        display: false, // OCULTAR EJE Y DE VENTAS
+                        // type: 'linear', 
+                        // position: 'left',
+                        // title: { display: true, text: 'Ventas (COP)', color: titleColor, font: {size: 12}},
+                        // grid: { color: gridColor, borderColor: gridColor },
+                        // ticks: {
+                        //     color: ticksColor,
+                        //     callback: function(value) {
+                        //         return 'COP ' + value.toLocaleString('es-CO', {minimumFractionDigits:0, maximumFractionDigits:0});
+                        //     }
+                        // }
+                    },
+                    yGanancia: { // Eje Y para Ganancia (si se muestra)
+                        display: false, // OCULTAR EJE Y DE GANANCIA
+                        // type: 'linear', 
+                        // position: 'right',
+                        // title: { display: true, text: 'Ganancia (COP)', color: titleColor, font: {size: 12}},
+                        // grid: { drawOnChartArea: false, }, // No dibujar cuadrícula para este eje si se superpone
+                        // ticks: {
+                        //     color: ticksColor,
+                        //     callback: function(value) {
+                        //         return 'COP ' + value.toLocaleString('es-CO', {minimumFractionDigits:0, maximumFractionDigits:0});
+                        //     }
+                        // }
+                    }
+                },
+                plugins: {
+                    legend: { 
+                        position: 'top',
+                        labels: { color: legendColor, font: { size: 12 } } 
+                    },
+                    tooltip: {
+                        backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)', // slate-800 vs white
+                        titleColor: isDarkMode ? '#e2e8f0' : '#1f2937', // slate-200 vs gray-800
+                        bodyColor: isDarkMode ? '#cbd5e1' : '#374151', // slate-300 vs gray-700
+                        borderColor: isDarkMode ? '#475569' : '#e5e7eb', // slate-600 vs gray-200
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed.y !== null) {
+                                    label += 'COP ' + context.parsed.y.toLocaleString('es-CO', {minimumFractionDigits:0, maximumFractionDigits:0});
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        if(salesTrendChartCtx) { 
+            const p = document.createElement('p');
+            p.textContent = 'No hay suficientes datos de ventas para mostrar la tendencia.';
+            p.className = 'text-center text-sm text-gray-500 dark:text-slate-400 py-10';
+            salesTrendChartCtx.parentElement.appendChild(p);
+        }
+    }
+});
+</script>
 {% endblock %}

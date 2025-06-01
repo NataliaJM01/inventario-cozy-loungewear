@@ -1,8 +1,31 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.env
+# Entornos virtuales
 venv/
 env/
-database/inventario.db
+ENV/
+*.venv
+
+# Archivos compilados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Bases de datos SQLite locales (si no quieres subir la de desarrollo)
+# database_sqlite_local/ 
+# *.sqlite3
+# *.db 
+# DESCOMENTA la línea de arriba si quieres que tu base de datos SQLite local NO se suba.
+# Para el primer despliegue en Render con SQLite (antes de PG), podrías querer subirla con datos de ejemplo.
+# Una vez que uses PostgreSQL en Render, definitivamente no necesitas subir el .db local.
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sublime-workspace
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
