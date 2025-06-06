@@ -7,7 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 import datetime 
 import random 
 
-app = Flask(_name_)
+app = Flask(__name__)
 app.secret_key = "mi_llave_super_secreta_y_femenina_loungewear_pg_final_v4" 
 
 # Configuración para fallback a SQLite local
@@ -613,4 +613,9 @@ if _name_ == '_main_':
     init_db(add_sample_data= not bool(os.environ.get('DATABASE_URL'))) 
     
     is_production = bool(os.environ.get('DATABASE_URL'))
+<<<<<<< HEAD
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=not is_production)
+=======
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=not is_production)
+
+>>>>>>> 9d0df7458d29d41809f445462a08e37777a99c94
