@@ -9,13 +9,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Bases de datos SQLite locales (si no quieres subir la de desarrollo)
-# database_sqlite_local/ 
+# Bases de datos SQLite locales
+database_sqlite_local/ 
 # *.sqlite3
 # *.db 
-# DESCOMENTA la línea de arriba si quieres que tu base de datos SQLite local NO se suba.
-# Para el primer despliegue en Render con SQLite (antes de PG), podrías querer subirla con datos de ejemplo.
-# Una vez que uses PostgreSQL en Render, definitivamente no necesitas subir el .db local.
 
 # Archivos de configuración de IDEs
 .vscode/
