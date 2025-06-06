@@ -8,7 +8,7 @@ import datetime
 import random 
 
 app = Flask(__name__)
-app.secret_key = "mi_llave_super_secreta_y_femenina_loungewear_pg_final_v3" # Consistent key
+app.secret_key = "mi_llave_super_secreta_y_femenina_loungewear_pg_final_v4" 
 
 # Configuración para fallback a SQLite local
 USE_SQLITE_LOCALLY_IF_NO_DB_URL = True 
@@ -35,13 +35,11 @@ def get_db_connection():
     else:
         raise ValueError("DATABASE_URL no está configurada y el fallback a SQLite local está deshabilitado.")
 
-# Helper para adaptar placeholders de SQL
 def _adapt_query(query_str, is_postgres_conn):
     if is_postgres_conn:
         return query_str.replace("?", "%s")
     return query_str
 
-# Helper para ejecutar consultas y manejar cursores
 def _ejecutar_consulta_db(query, params=None, fetchall=False, fetchone=False, DML=False, returning_id=False):
     conn = get_db_connection()
     is_postgres = not isinstance(conn, sqlite3.Connection)
@@ -62,10 +60,10 @@ def _ejecutar_consulta_db(query, params=None, fetchall=False, fetchone=False, DM
     try:
         if is_postgres:
             cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        else: # SQLite
+        else: 
             cur = conn.cursor()
 
-        cur.execute(adapted_query, params if params else [])
+        cur.execute(adapted_query, params if params else tuple()) # Asegurar que params sea una tupla para SQLite
         
         if DML:
             if is_postgres and returning_id:
@@ -121,27 +119,27 @@ def init_db(add_sample_data=False):
             productos_existentes = productos_existentes_row[0] if not is_postgres else (productos_existentes_row['count'] if productos_existentes_row else 0)
 
             if productos_existentes == 0:
-                print(f"Añadiendo datos de ejemplo masivos a {'PostgreSQL' if is_postgres else 'SQLite'}...")
-                base_nombres = ["Pijama", "Bata", "Conjunto", "Pantuflas", "Vela", "Kimono", "Short", "Camisón", "Accesorio", "Caja Regalo"]
-                descripciones = ["Algodón suave", "Seda elegante", "Felpa cómoda", "Diseño exclusivo", "Aroma relajante"]
+                print(f"Añadiendo datos de ejemplo a {'PostgreSQL' if is_postgres else 'SQLite'}...")
+                # ... (Lógica de datos de ejemplo como la tenías, asegurando placeholders correctos)
+                productos_ejemplo = [
+                    ('Pijama "Sueño de Algodón"', 'Pijama de dos piezas, 100% algodón orgánico.', 150000, 'PIJ001'),
+                    ('Bata "Abrazo de Seda"', 'Bata larga de seda sintética, color perla.', 220000, 'BAT001'),
+                    ('Conjunto "Relax Total"', 'Conjunto de pantalón y sudadera de felpa.', 180000, 'CON001'),
+                    ('Pantuflas "Nube Rosa"', 'Pantuflas extra suaves.', 75000, 'PAN001'), 
+                    ('Vela Aromática "Lavanda"', 'Vela de soja con aceite esencial.', 55000, 'VEL001'), 
+                    ('Bufanda "Invierno Chic"', 'Bufanda de lana merino.', 95000, 'BUF001') 
+                ]
                 producto_ids = []
-                productos_creados = []
-
-                for i in range(10):
-                    nombre = f"{base_nombres[i]} '{chr(65+i)}{i:02d}'"
-                    descripcion = random.choice(descripciones)
-                    precio_venta = random.randint(50, 250) * 1000 
-                    codigo_barras = f"PROD{i+1:04d}"
+                for prod in productos_ejemplo:
                     sql_insert_prod = _adapt_query("INSERT INTO Producto (nombre, descripcion, precio_venta, codigo_barras) VALUES (?, ?, ?, ?)" + (" RETURNING id" if is_postgres else ""), is_postgres)
-                    cur.execute(sql_insert_prod, (nombre, descripcion, precio_venta, codigo_barras))
+                    cur.execute(sql_insert_prod, prod)
                     prod_id = cur.fetchone()[0] if is_postgres else cur.lastrowid
                     producto_ids.append(prod_id)
-                    productos_creados.append({'id': prod_id, 'nombre': nombre, 'precio_venta': precio_venta})
                 
-                inventario_ejemplo = []
-                for i, prod_id_inv in enumerate(producto_ids): # Asegurar que todos los productos tengan entrada en inventario
-                    cantidad_inicial_inv = 0 if base_nombres[i] == "Bufanda" else random.randint(5,25) # Bufanda empieza en 0
-                    inventario_ejemplo.append((prod_id_inv, cantidad_inicial_inv, random.randint(3,8)))
+                inventario_ejemplo = [ 
+                    (producto_ids[0], 15, 5), (producto_ids[1], 8, 3), (producto_ids[2], 2, 5),
+                    (producto_ids[3], 20, 8), (producto_ids[4], 3, 6), (producto_ids[5], 0, 5) 
+                ]
                 cur.executemany(_adapt_query("INSERT INTO Inventario (producto_id, cantidad, stock_minimo) VALUES (?, ?, ?)", is_postgres), inventario_ejemplo)
                 
                 today = datetime.date.today()
@@ -151,32 +149,32 @@ def init_db(add_sample_data=False):
 
                 movimientos_entradas = []
                 for _ in range(50): 
-                    prod_info = random.choice(productos_creados)
+                    prod_info_idx = random.randint(0, len(producto_ids)-1)
+                    prod_id_sample = producto_ids[prod_info_idx]
+                    precio_venta_sample = productos_ejemplo[prod_info_idx][2]
                     cantidad = random.randint(5, 30)
                     random_day_offset = random.randint(0, total_days_in_year_so_far -1)
                     fecha_movimiento = start_of_year + datetime.timedelta(days=random_day_offset)
                     fecha_movimiento_dt = datetime.datetime.combine(fecha_movimiento, datetime.time(random.randint(0,23), random.randint(0,59), random.randint(0,59)))
                     fecha_movimiento_str = fecha_movimiento_dt.strftime('%Y-%m-%d %H:%M:%S')
-                    precio_compra_unitario = round(prod_info['precio_venta'] * random.uniform(0.4, 0.7), 0)
-                    movimientos_entradas.append((prod_info['id'], cantidad, fecha_movimiento_str, precio_compra_unitario))
+                    precio_compra_unitario = round(precio_venta_sample * random.uniform(0.4, 0.7), 0)
+                    movimientos_entradas.append((prod_id_sample, cantidad, fecha_movimiento_str, precio_compra_unitario))
                 cur.executemany(_adapt_query("INSERT INTO Entrada (producto_id, cantidad, fecha, precio_compra_unitario) VALUES (?, ?, ?, ?)", is_postgres), movimientos_entradas)
 
                 movimientos_salidas = []
                 for _ in range(50): 
-                    prod_info = random.choice(productos_creados)
-                    # Asegurar que no se intente vender un producto que ya podría estar en 0 por los datos de ejemplo de inventario
-                    if prod_info['nombre'] == "Bufanda '{chr(65+5)}{5:02d}'": continue # Evitar vender la bufanda que empieza en 0
-                    
+                    prod_info_idx = random.randint(0, len(producto_ids)-1)
+                    prod_id_sample = producto_ids[prod_info_idx]
+                    precio_venta_sample = productos_ejemplo[prod_info_idx][2]
                     cantidad = random.randint(1, 5) 
                     random_day_offset = random.randint(0, total_days_in_year_so_far -1)
                     fecha_movimiento = start_of_year + datetime.timedelta(days=random_day_offset)
                     fecha_movimiento_dt = datetime.datetime.combine(fecha_movimiento, datetime.time(random.randint(0,23), random.randint(0,59), random.randint(0,59)))
                     fecha_movimiento_str = fecha_movimiento_dt.strftime('%Y-%m-%d %H:%M:%S')
-                    precio_venta_momento = round(prod_info['precio_venta'] * random.uniform(0.9, 1.1), 0) 
-                    movimientos_salidas.append((prod_info['id'], cantidad, fecha_movimiento_str, precio_venta_momento))
+                    precio_venta_momento = round(precio_venta_sample * random.uniform(0.9, 1.1), 0) 
+                    movimientos_salidas.append((prod_id_sample, cantidad, fecha_movimiento_str, precio_venta_momento))
                 cur.executemany(_adapt_query("INSERT INTO Salida (producto_id, cantidad, fecha, precio_venta_unitario_momento) VALUES (?, ?, ?, ?)", is_postgres), movimientos_salidas)
-                print(f"{len(movimientos_entradas)} entradas y {len(movimientos_salidas)} salidas de ejemplo añadidas.")
-
+                
                 print("Actualizando inventario final después de datos masivos...")
                 for prod_id_update in producto_ids:
                     cur.execute(_adapt_query("SELECT SUM(cantidad) as total_e FROM Entrada WHERE producto_id = ?", is_postgres), (prod_id_update,))
@@ -189,30 +187,16 @@ def init_db(add_sample_data=False):
                     total_s = total_s_row[0] if not is_postgres and total_s_row else (total_s_row['total_s'] if is_postgres and total_s_row else 0)
                     total_s = total_s or 0
                     
-                    # El stock inicial ya se puso en la tabla Inventario, aquí solo ajustamos con entradas/salidas
-                    # Para ser más preciso, deberíamos tomar el stock inicial de la tabla Inventario y luego sumar/restar.
-                    # O, si asumimos que Inventario se pobla DESPUÉS de entradas/salidas, entonces el cálculo es:
-                    stock_actualizado = total_e - total_s 
-                    # Pero si Inventario ya tiene un valor inicial, sería: stock_inventario_inicial + total_e - total_s
-                    # Por simplicidad de datos de ejemplo, y dado que poblamos Inventario antes:
-                    cur_inv_check = conn.cursor(cursor_factory=psycopg2.extras.DictCursor) if is_postgres else cur
-                    cur_inv_check.execute(_adapt_query("SELECT cantidad FROM Inventario WHERE producto_id = ?", is_postgres), (prod_id_update,))
-                    inv_row = cur_inv_check.fetchone()
+                    cur.execute(_adapt_query("SELECT cantidad FROM Inventario WHERE producto_id = ?",is_postgres), (prod_id_update,))
+                    inv_row = cur.fetchone()
                     stock_inventario_inicial = inv_row[0] if not is_postgres and inv_row else (inv_row['cantidad'] if is_postgres and inv_row else 0)
                     stock_inventario_inicial = stock_inventario_inicial or 0
-
-                    stock_final_calculado = stock_inventario_inicial + total_e - total_s # Esto es más correcto si Inventario ya tiene datos
-                                                                                        # PERO, si poblamos Inventario con valores fijos y LUEGO entradas/salidas,
-                                                                                        # el stock final debería ser el del inventario + entradas - salidas.
-                                                                                        # La lógica actual de init_db para Inventario es un poco conflictiva con esto.
-                                                                                        # Vamos a simplificar: el stock en Inventario será el resultado de E - S.
+                    
+                    stock_actualizado = stock_inventario_inicial + total_e - total_s 
                     cur.execute(_adapt_query("UPDATE Inventario SET cantidad = ? WHERE producto_id = ?", is_postgres), (stock_actualizado, prod_id_update))
-
-                    if is_postgres and cur_inv_check != cur : cur_inv_check.close()
-
                 print("Inventario final actualizado.")
             
-            if is_postgres and cur_check != cur : cur_check.close() # Cerrar DictCursor si se creó aparte
+            if is_postgres and cur_check != cur : cur_check.close()
         conn.commit()
     except Exception as e:
         if conn: conn.rollback()
@@ -223,9 +207,11 @@ def init_db(add_sample_data=False):
         if cur: cur.close() 
         if conn: conn.close()
 
-
+# --- Rutas de la Aplicación ---
 @app.route('/')
 def dashboard():
+    # ... (Lógica del dashboard usando _ejecutar_consulta_db como antes) ...
+    # Asegurarse de que el acceso a los resultados de fetchone sea robusto
     productos_bajo_stock_alerta_row = _ejecutar_consulta_db('SELECT COUNT(*) as count FROM Inventario WHERE cantidad <= stock_minimo AND cantidad > 0', fetchone=True)
     productos_bajo_stock_alerta = 0
     if productos_bajo_stock_alerta_row:
@@ -244,12 +230,13 @@ def dashboard():
         productos_stock_critico_procesado.append(prod_dict)
 
     current_month_str = datetime.datetime.now().strftime("%Y-%m")
-    # Necesitamos saber si es PG para la función de fecha
-    conn_temp_for_type_check = get_db_connection()
-    is_postgres_conn_for_dashboard = not isinstance(conn_temp_for_type_check, sqlite3.Connection)
-    conn_temp_for_type_check.close()
     
-    date_filter_sql_month = "strftime('%Y-%m', fecha) = ?" if not is_postgres_conn_for_dashboard else "to_char(fecha, 'YYYY-MM') = %s"
+    # Determinar si es PostgreSQL para el formato de fecha en la consulta SQL
+    conn_temp_check = get_db_connection()
+    is_pg_for_dashboard = not isinstance(conn_temp_check, sqlite3.Connection)
+    conn_temp_check.close()
+
+    date_filter_sql_month = "strftime('%Y-%m', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY-MM') = %s"
     
     sql_salidas_mes = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM Entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM Salida s WHERE {date_filter_sql_month}"
     salidas_del_mes_con_costo_for_cards = _ejecutar_consulta_db(sql_salidas_mes, (current_month_str,), fetchall=True) or []
@@ -267,7 +254,7 @@ def dashboard():
         if valor_stock_actual is None: valor_stock_actual = 0.0
     
     current_year_str = datetime.datetime.now().strftime("%Y")
-    year_filter_sql = "strftime('%Y', fecha) = ?" if not is_postgres_conn_for_dashboard else "to_char(fecha, 'YYYY') = %s"
+    year_filter_sql = "strftime('%Y', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY') = %s"
     sql_salidas_ano = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM Entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM Salida s WHERE {year_filter_sql}"
     salidas_del_ano_con_costo = _ejecutar_consulta_db(sql_salidas_ano, (current_year_str,), fetchall=True) or []
     ingresos_anuales_valor = 0.0
@@ -292,7 +279,7 @@ def dashboard():
         month_year_str_loop = f"{target_year_num:04d}-{target_month_num:02d}" 
         month_name_label = f"{meses_es_abbr[target_month_num - 1]} {str(target_year_num)[2:]}" 
         
-        date_filter_sql_loop = "strftime('%Y-%m', fecha) = ?" if not is_postgres_conn_for_dashboard else "to_char(fecha, 'YYYY-MM') = %s"
+        date_filter_sql_loop = "strftime('%Y-%m', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY-MM') = %s"
         sql_ventas_mes_trend = f"SELECT SUM(cantidad * precio_venta_unitario_momento) as total_ventas FROM Salida WHERE {date_filter_sql_loop}"
         ventas_del_mes_row = _ejecutar_consulta_db(sql_ventas_mes_trend, (month_year_str_loop,), fetchone=True)
         ventas_del_mes = 0.0
@@ -390,9 +377,7 @@ def editar_producto(id):
     if not producto_a_editar:
         flash('Producto no encontrado.', 'error')
         return redirect(url_for('productos'))
-    
     form_data_to_render = dict(producto_a_editar) if request.method == 'GET' and producto_a_editar else request.form.to_dict()
-    
     if request.method == 'POST':
         nombre = form_data_to_render.get('nombre')
         descripcion = form_data_to_render.get('descripcion')
@@ -400,7 +385,6 @@ def editar_producto(id):
         codigo_barras = form_data_to_render.get('codigo_barras')
         cantidad_str = form_data_to_render.get('cantidad')
         stock_minimo_str = form_data_to_render.get('stock_minimo')
-
         if not nombre or not precio_venta_str or not cantidad_str or not stock_minimo_str:
             flash('Todos los campos marcados con * son obligatorios.', 'error')
             return render_template('editar_producto.html', producto=producto_a_editar, form_data=form_data_to_render)
@@ -626,10 +610,8 @@ def settings():
 if __name__ == '__main__':
     db_type = "PostgreSQL Remota" if os.environ.get('DATABASE_URL') else "SQLite local"
     print(f"La base de datos se creará/estará en: {db_type}")
-    # Para un despliegue limpio en Render, add_sample_data debería ser False por defecto
-    # o controlado por una variable de entorno diferente a DATABASE_URL si necesitas datos de ejemplo en producción.
-    # Por ahora, lo dejamos como estaba, donde se añaden datos si DATABASE_URL no está seteada.
     init_db(add_sample_data= not bool(os.environ.get('DATABASE_URL'))) 
     
     is_production = bool(os.environ.get('DATABASE_URL'))
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=not is_production)
+
