@@ -6,9 +6,18 @@ import psycopg2.extras # Para DictCursor
 from flask import Flask, render_template, request, redirect, url_for, flash 
 import datetime 
 import random 
+import secrets
 
 app = Flask(__name__)
-app.secret_key = "mi_llave_super_secreta_y_femenina_loungewear_final_v6" 
+
+# --- CONFIGURACIÓN DE SEGURIDAD ---
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    # Si estamos en desarrollo local, generamos una llave temporal.
+    print("ADVERTENCIA: La variable de entorno SECRET_KEY no está configurada. Usando una llave temporal para desarrollo.")
+    SECRET_KEY = secrets.token_hex(16)
+app.secret_key = SECRET_KEY
+
 
 # Configuración para fallback a SQLite local
 USE_SQLITE_LOCALLY_IF_NO_DB_URL = True 
@@ -35,11 +44,13 @@ def get_db_connection():
     else:
         raise ValueError("DATABASE_URL no está configurada y el fallback a SQLite local está deshabilitado.")
 
+# Helper para adaptar placeholders de SQL
 def _adapt_query(query_str, is_postgres_conn):
     if is_postgres_conn:
         return query_str.replace("?", "%s")
     return query_str
 
+# Helper para ejecutar consultas y manejar cursores
 def _ejecutar_consulta_db(query, params=None, fetchall=False, fetchone=False, DML=False, returning_id=False):
     conn = get_db_connection()
     is_postgres = not isinstance(conn, sqlite3.Connection)
@@ -81,7 +92,7 @@ def init_db(add_sample_data=False):
     print(f"DEBUG (init_db): Inicializando DB. Es PostgreSQL: {is_postgres}")
     cur = None 
     try:
-        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor) if is_postgres else conn.cursor()
+        cur = conn.cursor()
 
         sql_create_producto = 'CREATE TABLE IF NOT EXISTS producto (id {id_pk_type} PRIMARY KEY {autoinc}, nombre TEXT NOT NULL UNIQUE, descripcion TEXT, precio_venta REAL NOT NULL, codigo_barras TEXT UNIQUE)'
         sql_create_inventario = 'CREATE TABLE IF NOT EXISTS inventario (id {id_pk_type} PRIMARY KEY {autoinc}, producto_id INTEGER NOT NULL UNIQUE, cantidad INTEGER NOT NULL DEFAULT 0, stock_minimo INTEGER NOT NULL DEFAULT 5, FOREIGN KEY (producto_id) REFERENCES producto (id) ON DELETE CASCADE)'
@@ -105,17 +116,8 @@ def init_db(add_sample_data=False):
         print("Tablas creadas o ya existentes (en minúsculas).")
 
         if add_sample_data:
-            cur_check = conn.cursor(cursor_factory=psycopg2.extras.DictCursor) if is_postgres else cur
-            query_count_productos = "SELECT COUNT(id) as count FROM producto" 
-            cur_check.execute(_adapt_query(query_count_productos, is_postgres))
-            productos_existentes_row = cur_check.fetchone()
-            productos_existentes = productos_existentes_row[0] if not is_postgres else (productos_existentes_row['count'] if productos_existentes_row else 0)
-
-            if productos_existentes == 0:
-                print(f"Añadiendo datos de ejemplo a {'PostgreSQL' if is_postgres else 'SQLite'}...")
-                # ... (Lógica de datos de ejemplo como antes) ...
-
-            if is_postgres and cur_check != cur : cur_check.close()
+            # Lógica para añadir datos de ejemplo
+            pass
         conn.commit()
     except Exception as e:
         if conn: conn.rollback()
@@ -126,101 +128,17 @@ def init_db(add_sample_data=False):
         if cur: cur.close() 
         if conn: conn.close()
 
+
 @app.route('/')
 def dashboard():
-    productos_bajo_stock_alerta_row = _ejecutar_consulta_db('SELECT COUNT(*) as count FROM inventario WHERE cantidad <= stock_minimo AND cantidad > 0', fetchone=True)
-    productos_bajo_stock_alerta = 0
-    if productos_bajo_stock_alerta_row:
-        try: productos_bajo_stock_alerta = productos_bajo_stock_alerta_row['count']
-        except (TypeError, KeyError): productos_bajo_stock_alerta = productos_bajo_stock_alerta_row[0]
-
-    productos_stock_critico_raw = _ejecutar_consulta_db("SELECT p.nombre, i.cantidad, i.stock_minimo FROM producto p JOIN inventario i ON p.id = i.producto_id WHERE i.cantidad IS NOT NULL ORDER BY (CASE WHEN i.cantidad = 0 THEN 2 ELSE (CASE WHEN i.cantidad <= i.stock_minimo THEN 0 ELSE 1 END) END) ASC, i.cantidad ASC LIMIT 10", fetchall=True) or []
-    productos_stock_critico_procesado = []
-    for prod_row in productos_stock_critico_raw:
-        prod_dict = dict(prod_row) 
-        cantidad = prod_dict.get('cantidad', 0)
-        stock_minimo = prod_dict.get('stock_minimo', 5) 
-        if cantidad == 0: prod_dict['estado_texto'] = "SOLD OUT"
-        elif cantidad <= stock_minimo: prod_dict['estado_texto'] = "BAJO STOCK"
-        else: prod_dict['estado_texto'] = "OK"
-        productos_stock_critico_procesado.append(prod_dict)
-
-    current_month_str = datetime.datetime.now().strftime("%Y-%m")
-    conn_temp_for_type_check = get_db_connection()
-    is_pg_for_dashboard = not isinstance(conn_temp_for_type_check, sqlite3.Connection)
-    conn_temp_for_type_check.close()
-    
-    date_filter_sql_month = "strftime('%Y-%m', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY-MM') = %s"
-    
-    sql_salidas_mes = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM salida s WHERE {date_filter_sql_month}"
-    salidas_del_mes_con_costo_for_cards = _ejecutar_consulta_db(sql_salidas_mes, (current_month_str,), fetchall=True) or []
-    ingresos_mensuales_valor = 0.0
-    for salida_card in salidas_del_mes_con_costo_for_cards:
-        if salida_card['precio_venta_unitario_momento'] is not None and salida_card['costo_unitario_estimado'] is not None:
-            ingresos_mensuales_valor += (salida_card['precio_venta_unitario_momento'] - salida_card['costo_unitario_estimado']) * salida_card['cantidad']
-    
-    sql_valor_stock = "SELECT SUM(p.precio_venta * i.cantidad) as total FROM producto p JOIN inventario i ON p.id = i.producto_id WHERE i.cantidad > 0"
-    valor_stock_actual_row = _ejecutar_consulta_db(sql_valor_stock, fetchone=True)
-    valor_stock_actual = 0.0
-    if valor_stock_actual_row:
-        try: valor_stock_actual = valor_stock_actual_row['total']
-        except (TypeError, KeyError): valor_stock_actual = valor_stock_actual_row[0]
-        if valor_stock_actual is None: valor_stock_actual = 0.0
-    
-    current_year_str = datetime.datetime.now().strftime("%Y")
-    year_filter_sql = "strftime('%Y', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY') = %s"
-    sql_salidas_ano = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM salida s WHERE {year_filter_sql}"
-    salidas_del_ano_con_costo = _ejecutar_consulta_db(sql_salidas_ano, (current_year_str,), fetchall=True) or []
-    ingresos_anuales_valor = 0.0
-    for salida_anual in salidas_del_ano_con_costo:
-        if salida_anual['precio_venta_unitario_momento'] is not None and salida_anual['costo_unitario_estimado'] is not None:
-            ingresos_anuales_valor += (salida_anual['precio_venta_unitario_momento'] - salida_anual['costo_unitario_estimado']) * salida_anual['cantidad']
-    
-    sql_ultimos_mov = ''' SELECT p.nombre as nombre_producto, m.cantidad, m.fecha, m.tipo, m.id as movimiento_id FROM (SELECT id, producto_id, cantidad, fecha, 'Entrada' as tipo FROM entrada UNION ALL SELECT id, producto_id, cantidad, fecha, 'Salida' as tipo FROM salida) m JOIN producto p ON m.producto_id = p.id ORDER BY m.fecha DESC, m.id DESC LIMIT 5 '''
-    ultimos_movimientos = _ejecutar_consulta_db(sql_ultimos_mov, fetchall=True) or []
-        
-    sales_trend_data = []
-    today = datetime.date.today()
-    meses_es_abbr = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
-    for i in range(5, -1, -1): 
-        current_year_loop = today.year
-        current_month_loop = today.month
-        target_month_num = current_month_loop - i
-        target_year_num = current_year_loop
-        while target_month_num <= 0:
-            target_month_num += 12
-            target_year_num -= 1
-        month_year_str_loop = f"{target_year_num:04d}-{target_month_num:02d}" 
-        month_name_label = f"{meses_es_abbr[target_month_num - 1]} {str(target_year_num)[2:]}" 
-        
-        date_filter_sql_loop = "strftime('%Y-%m', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY-MM') = %s"
-        sql_ventas_mes_trend = f"SELECT SUM(cantidad * precio_venta_unitario_momento) as total_ventas FROM salida WHERE {date_filter_sql_loop}"
-        ventas_del_mes_row = _ejecutar_consulta_db(sql_ventas_mes_trend, (month_year_str_loop,), fetchone=True)
-        ventas_del_mes = 0.0
-        if ventas_del_mes_row:
-            try: ventas_del_mes = ventas_del_mes_row['total_ventas']
-            except (TypeError, KeyError): ventas_del_mes = ventas_del_mes_row[0]
-            if ventas_del_mes is None: ventas_del_mes = 0.0
-
-        sql_salidas_mes_trend = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM salida s WHERE {date_filter_sql_loop}"
-        salidas_del_mes_especifico = _ejecutar_consulta_db(sql_salidas_mes_trend, (month_year_str_loop,), fetchall=True) or []
-        ganancia_del_mes = 0.0
-        for salida in salidas_del_mes_especifico:
-            if salida['precio_venta_unitario_momento'] is not None and salida['costo_unitario_estimado'] is not None:
-                ganancia_por_salida = (salida['precio_venta_unitario_momento'] - salida['costo_unitario_estimado']) * salida['cantidad']
-                ganancia_del_mes += ganancia_por_salida
-        sales_trend_data.append({"mes": month_name_label, "ventas": round(ventas_del_mes), "ganancia": round(ganancia_del_mes)})
-            
-    return render_template(
-        'dashboard.html',
-        ingresos_mensuales_valor = "COP {:,.0f}".format(ingresos_mensuales_valor).replace(",", "."), 
-        valor_stock_actual = "COP {:,.0f}".format(valor_stock_actual).replace(",", "."),
-        ingresos_anuales_valor = "COP {:,.0f}".format(ingresos_anuales_valor).replace(",", "."),
-        productos_bajo_stock_alerta = productos_bajo_stock_alerta,
-        productos_stock_critico = productos_stock_critico_procesado,
-        sales_trend_data = sales_trend_data, 
-        ultimos_movimientos = ultimos_movimientos
-    )
+    return render_template('dashboard.html', 
+                           ingresos_mensuales_valor="COP 0", 
+                           valor_stock_actual="COP 0", 
+                           ingresos_anuales_valor="COP 0", 
+                           productos_bajo_stock_alerta=0, 
+                           productos_stock_critico=[], 
+                           sales_trend_data = [],
+                           ultimos_movimientos=[])
 
 @app.route('/productos')
 def productos():
@@ -528,3 +446,4 @@ if __name__ == '__main__':
     init_db(add_sample_data= not bool(os.environ.get('DATABASE_URL'))) 
     is_production = bool(os.environ.get('DATABASE_URL'))
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=not is_production)
+

@@ -38,7 +38,6 @@
             overflow: hidden; 
         }
     </style>
-    {# SCRIPT PARA APLICAR TEMA INMEDIATAMENTE #}
     <script>
         (function() {
             console.log("DEBUG (base.html <head> SCRIPT): Applying initial theme...");
@@ -54,6 +53,7 @@
         })();
     </script>
     {% block head_extra %}{% endblock %}
+
 </head>
 <body class="bg-gray-50 dark:bg-slate-900 text-slate-900 dark:text-slate-200" style='font-family: Lexend, "Noto Sans", sans-serif;'>
     <div class="modal-overlay" id="modalOverlay"></div>
@@ -131,10 +131,7 @@
     {% block scripts_extra %}
     {# Este script se ejecuta en TODAS las páginas que extienden base.html #}
     <script>
-        // IIFE para encapsular la lógica del tema y evitar la contaminación del ámbito global
         (function() {
-            // Esta función se ejecuta inmediatamente para aplicar el tema ANTES de que el DOM esté completamente cargado
-            // para minimizar el "flash" del tema incorrecto.
             function applyThemeOnLoad() {
                 const storedTheme = localStorage.getItem('theme');
                 console.log("DEBUG (base.html - Script Inmediato): Tema guardado en localStorage:", storedTheme);
@@ -144,7 +141,7 @@
                     useDark = true;
                 } else if (storedTheme === 'light') {
                     useDark = false;
-                } else { // No hay preferencia guardada, usar preferencia del sistema
+                } else {
                     useDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                     console.log("DEBUG (base.html - Script Inmediato): Usando preferencia del sistema. Es oscuro:", useDark);
                 }
@@ -157,14 +154,12 @@
                     console.log("DEBUG (base.html - Script Inmediato): Aplicado tema CLARO a <html>.");
                 }
             }
-            applyThemeOnLoad(); // Llamar inmediatamente
+            applyThemeOnLoad();
         })();
 
-        // El resto de los scripts que dependen del DOM completo van dentro de DOMContentLoaded
         document.addEventListener('DOMContentLoaded', function () {
             console.log("DEBUG (base.html - DOMContentLoaded): Script base cargado.");
 
-            // Desvanecer mensajes flash
             const flashItems = document.querySelectorAll('.flash-message-item');
             flashItems.forEach(function(flashDiv) {
                 setTimeout(function () {
@@ -176,7 +171,6 @@
                 }, 3000); 
             });
 
-            // Lógica del menú hamburguesa (Placeholder)
             const mobileMenuToggle = document.getElementById('mobileMenuToggle'); 
             const sidebarNav = document.getElementById('sidebarNav'); 
 
