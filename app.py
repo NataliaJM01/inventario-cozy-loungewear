@@ -13,11 +13,9 @@ app = Flask(__name__)
 # --- CONFIGURACIÓN DE SEGURIDAD ---
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
-    # Si estamos en desarrollo local, generamos una llave temporal.
     print("ADVERTENCIA: La variable de entorno SECRET_KEY no está configurada. Usando una llave temporal para desarrollo.")
     SECRET_KEY = secrets.token_hex(16)
 app.secret_key = SECRET_KEY
-
 
 # Configuración para fallback a SQLite local
 USE_SQLITE_LOCALLY_IF_NO_DB_URL = True 
