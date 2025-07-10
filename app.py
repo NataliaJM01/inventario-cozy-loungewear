@@ -439,10 +439,15 @@ def settings():
     return render_template('settings.html', current_year=current_year)
 
 if __name__ == '__main__':
-    db_type = "PostgreSQL Remota" if os.environ.get('DATABASE_URL') else "SQLite local"
-    print(f"La base de datos se creará/estará en: {db_type}")
-    init_db(add_sample_data= not bool(os.environ.get('DATABASE_URL'))) 
     is_production = bool(os.environ.get('DATABASE_URL'))
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=not is_production)
-    port = int(os.environ.get("PORT", 8080)) # Cambiar 5000 por 8080
+    if is_production and not app.secret_key:
+        raise ValueError("No se ha configurado la SECRET_KEY en las variables de entorno de producción.")
+
+    db_type = "PostgreSQL Remota" if is_production else "SQLite local"
+    print(f"La base de datos se creará/estará en: {db_type}")
+    
+    init_db(add_sample_data=not is_production) 
+    
+    port = int(os.environ.get("PORT", 8080)) 
+    
     app.run(host='0.0.0.0', port=port, debug=not is_production)
