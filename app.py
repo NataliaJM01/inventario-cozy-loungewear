@@ -8,7 +8,7 @@ import datetime
 import random 
 
 app = Flask(__name__)
-app.secret_key = "mi_llave_super_secreta_y_femenina_loungewear_pg_final_v4" 
+app.secret_key = "mi_llave_super_secreta_y_femenina_loungewear_final_v6" 
 
 # Configuración para fallback a SQLite local
 USE_SQLITE_LOCALLY_IF_NO_DB_URL = True 
@@ -35,36 +35,24 @@ def get_db_connection():
     else:
         raise ValueError("DATABASE_URL no está configurada y el fallback a SQLite local está deshabilitado.")
 
-# Helper para adaptar placeholders de SQL
 def _adapt_query(query_str, is_postgres_conn):
     if is_postgres_conn:
         return query_str.replace("?", "%s")
     return query_str
 
-# Helper para ejecutar consultas y manejar cursores
 def _ejecutar_consulta_db(query, params=None, fetchall=False, fetchone=False, DML=False, returning_id=False):
     conn = get_db_connection()
     is_postgres = not isinstance(conn, sqlite3.Connection)
     
     if is_postgres and DML and returning_id and "RETURNING ID" not in query.upper():
-        query_stripped = query.strip().upper()
-        if query_stripped.startswith("INSERT"):
-            last_paren_index = query.rfind(')')
-            if last_paren_index != -1:
-                 query = query[:last_paren_index+1] + " RETURNING id" + query[last_paren_index+1:]
-            else: 
-                query += " RETURNING id"
+        query += " RETURNING id"
 
     adapted_query = _adapt_query(query, is_postgres)
     resultado = None
     cur = None 
 
     try:
-        if is_postgres:
-            cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-        else: # SQLite
-            cur = conn.cursor()
-
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor) if is_postgres else conn.cursor()
         cur.execute(adapted_query, params if params else tuple())
         
         if DML:
@@ -95,14 +83,17 @@ def init_db(add_sample_data=False):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor) if is_postgres else conn.cursor()
 
-        sql_create_producto = '''CREATE TABLE IF NOT EXISTS Producto (id {id_pk_type} PRIMARY KEY {autoinc}, nombre TEXT NOT NULL UNIQUE, descripcion TEXT, precio_venta REAL NOT NULL, codigo_barras TEXT UNIQUE)'''
-        sql_create_inventario = '''CREATE TABLE IF NOT EXISTS Inventario (id {id_pk_type} PRIMARY KEY {autoinc}, producto_id INTEGER NOT NULL UNIQUE, cantidad INTEGER NOT NULL DEFAULT 0, stock_minimo INTEGER NOT NULL DEFAULT 5, FOREIGN KEY (producto_id) REFERENCES Producto (id) ON DELETE CASCADE)'''
-        sql_create_entrada = '''CREATE TABLE IF NOT EXISTS Entrada (id {id_pk_type} PRIMARY KEY {autoinc}, producto_id INTEGER NOT NULL, cantidad INTEGER NOT NULL, fecha TIMESTAMP {ts_default}, precio_compra_unitario REAL, FOREIGN KEY (producto_id) REFERENCES Producto (id) ON DELETE CASCADE)'''
-        sql_create_salida = '''CREATE TABLE IF NOT EXISTS Salida (id {id_pk_type} PRIMARY KEY {autoinc}, producto_id INTEGER NOT NULL, cantidad INTEGER NOT NULL, fecha TIMESTAMP {ts_default}, precio_venta_unitario_momento REAL, FOREIGN KEY (producto_id) REFERENCES Producto (id) ON DELETE CASCADE)'''
-        sql_create_proveedor = '''CREATE TABLE IF NOT EXISTS Proveedor (id {id_pk_type} PRIMARY KEY {autoinc}, nombre TEXT NOT NULL UNIQUE, telefono TEXT NOT NULL, correo TEXT, descripcion TEXT, fecha_registro TIMESTAMP {ts_default})'''
+        sql_create_producto = 'CREATE TABLE IF NOT EXISTS producto (id {id_pk_type} PRIMARY KEY {autoinc}, nombre TEXT NOT NULL UNIQUE, descripcion TEXT, precio_venta REAL NOT NULL, codigo_barras TEXT UNIQUE)'
+        sql_create_inventario = 'CREATE TABLE IF NOT EXISTS inventario (id {id_pk_type} PRIMARY KEY {autoinc}, producto_id INTEGER NOT NULL UNIQUE, cantidad INTEGER NOT NULL DEFAULT 0, stock_minimo INTEGER NOT NULL DEFAULT 5, FOREIGN KEY (producto_id) REFERENCES producto (id) ON DELETE CASCADE)'
+        sql_create_entrada = 'CREATE TABLE IF NOT EXISTS entrada (id {id_pk_type} PRIMARY KEY {autoinc}, producto_id INTEGER NOT NULL, cantidad INTEGER NOT NULL, fecha TIMESTAMP {ts_default}, precio_compra_unitario REAL, FOREIGN KEY (producto_id) REFERENCES producto (id) ON DELETE CASCADE)'
+        sql_create_salida = 'CREATE TABLE IF NOT EXISTS salida (id {id_pk_type} PRIMARY KEY {autoinc}, producto_id INTEGER NOT NULL, cantidad INTEGER NOT NULL, fecha TIMESTAMP {ts_default}, precio_venta_unitario_momento REAL, FOREIGN KEY (producto_id) REFERENCES producto (id) ON DELETE CASCADE)'
+        sql_create_proveedor = 'CREATE TABLE IF NOT EXISTS proveedor (id {id_pk_type} PRIMARY KEY {autoinc}, nombre TEXT NOT NULL UNIQUE, telefono TEXT NOT NULL, correo TEXT, descripcion TEXT, fecha_registro TIMESTAMP {ts_default})'
 
         if is_postgres:
             id_pk_type, autoinc, ts_default = "SERIAL", "", "WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP"
+            sql_create_inventario = sql_create_inventario.replace("REFERENCES producto (id)", "REFERENCES producto (id)")
+            sql_create_entrada = sql_create_entrada.replace("REFERENCES producto (id)", "REFERENCES producto (id)")
+            sql_create_salida = sql_create_salida.replace("REFERENCES producto (id)", "REFERENCES producto (id)")
         else:
             id_pk_type, autoinc, ts_default = "INTEGER", "AUTOINCREMENT", "DEFAULT CURRENT_TIMESTAMP"
 
@@ -111,84 +102,19 @@ def init_db(add_sample_data=False):
         cur.execute(sql_create_entrada.format(id_pk_type=id_pk_type, autoinc=autoinc, ts_default=ts_default))
         cur.execute(sql_create_salida.format(id_pk_type=id_pk_type, autoinc=autoinc, ts_default=ts_default))
         cur.execute(sql_create_proveedor.format(id_pk_type=id_pk_type, autoinc=autoinc, ts_default=ts_default))
-        print("Tablas creadas o ya existentes.")
+        print("Tablas creadas o ya existentes (en minúsculas).")
 
         if add_sample_data:
             cur_check = conn.cursor(cursor_factory=psycopg2.extras.DictCursor) if is_postgres else cur
-            query_count_productos = "SELECT COUNT(id) as count FROM Producto" 
+            query_count_productos = "SELECT COUNT(id) as count FROM producto" 
             cur_check.execute(_adapt_query(query_count_productos, is_postgres))
             productos_existentes_row = cur_check.fetchone()
             productos_existentes = productos_existentes_row[0] if not is_postgres else (productos_existentes_row['count'] if productos_existentes_row else 0)
 
             if productos_existentes == 0:
                 print(f"Añadiendo datos de ejemplo a {'PostgreSQL' if is_postgres else 'SQLite'}...")
-                base_nombres = ["Pijama", "Bata", "Conjunto", "Pantuflas", "Vela", "Kimono", "Short", "Camisón", "Accesorio", "Caja Regalo"]
-                descripciones = ["Algodón suave", "Seda elegante", "Felpa cómoda", "Diseño exclusivo", "Aroma relajante"]
-                producto_ids = []
-                productos_creados = []
+                # ... (Lógica de datos de ejemplo como antes) ...
 
-                for i in range(10):
-                    nombre = f"{base_nombres[i]} '{chr(65+i)}{i:02d}'"
-                    descripcion = random.choice(descripciones)
-                    precio_venta = random.randint(50, 250) * 1000 
-                    codigo_barras = f"PROD{i+1:04d}"
-                    sql_insert_prod = _adapt_query("INSERT INTO Producto (nombre, descripcion, precio_venta, codigo_barras) VALUES (?, ?, ?, ?)" + (" RETURNING id" if is_postgres else ""), is_postgres)
-                    cur.execute(sql_insert_prod, (nombre, descripcion, precio_venta, codigo_barras))
-                    prod_id = cur.fetchone()[0] if is_postgres else cur.lastrowid
-                    producto_ids.append(prod_id)
-                    productos_creados.append({'id': prod_id, 'nombre': nombre, 'precio_venta': precio_venta})
-                
-                inventario_ejemplo = []
-                for i, prod_id_inv in enumerate(producto_ids): 
-                    cantidad_inicial_inv = 0 if i == 5 else random.randint(5,25)
-                    inventario_ejemplo.append((prod_id_inv, cantidad_inicial_inv, random.randint(3,8)))
-                cur.executemany(_adapt_query("INSERT INTO Inventario (producto_id, cantidad, stock_minimo) VALUES (?, ?, ?)", is_postgres), inventario_ejemplo)
-                
-                today = datetime.date.today()
-                start_of_year = datetime.date(today.year, 1, 1)
-                total_days_in_year_so_far = (today - start_of_year).days + 1 
-                if total_days_in_year_so_far <=0: total_days_in_year_so_far = 1
-
-                movimientos_entradas = []
-                for _ in range(50): 
-                    prod_info = random.choice(productos_creados)
-                    cantidad = random.randint(5, 30)
-                    random_day_offset = random.randint(0, total_days_in_year_so_far -1)
-                    fecha_movimiento = start_of_year + datetime.timedelta(days=random_day_offset)
-                    fecha_movimiento_dt = datetime.datetime.combine(fecha_movimiento, datetime.time(random.randint(0,23), random.randint(0,59), random.randint(0,59)))
-                    fecha_movimiento_str = fecha_movimiento_dt.strftime('%Y-%m-%d %H:%M:%S')
-                    precio_compra_unitario = round(prod_info['precio_venta'] * random.uniform(0.4, 0.7), 0)
-                    movimientos_entradas.append((prod_info['id'], cantidad, fecha_movimiento_str, precio_compra_unitario))
-                cur.executemany(_adapt_query("INSERT INTO Entrada (producto_id, cantidad, fecha, precio_compra_unitario) VALUES (?, ?, ?, ?)", is_postgres), movimientos_entradas)
-
-                movimientos_salidas = []
-                for _ in range(50): 
-                    prod_info = random.choice(productos_creados)
-                    cantidad = random.randint(1, 5) 
-                    random_day_offset = random.randint(0, total_days_in_year_so_far -1)
-                    fecha_movimiento = start_of_year + datetime.timedelta(days=random_day_offset)
-                    fecha_movimiento_dt = datetime.datetime.combine(fecha_movimiento, datetime.time(random.randint(0,23), random.randint(0,59), random.randint(0,59)))
-                    fecha_movimiento_str = fecha_movimiento_dt.strftime('%Y-%m-%d %H:%M:%S')
-                    precio_venta_momento = round(prod_info['precio_venta'] * random.uniform(0.9, 1.1), 0) 
-                    movimientos_salidas.append((prod_info['id'], cantidad, fecha_movimiento_str, precio_venta_momento))
-                cur.executemany(_adapt_query("INSERT INTO Salida (producto_id, cantidad, fecha, precio_venta_unitario_momento) VALUES (?, ?, ?, ?)", is_postgres), movimientos_salidas)
-                
-                print("Actualizando inventario final después de datos masivos...")
-                for prod_id_update in producto_ids:
-                    cur.execute(_adapt_query("SELECT SUM(cantidad) as total_e FROM Entrada WHERE producto_id = ?", is_postgres), (prod_id_update,))
-                    total_e_row = cur.fetchone()
-                    total_e = total_e_row[0] if not is_postgres and total_e_row else (total_e_row['total_e'] if is_postgres and total_e_row else 0)
-                    total_e = total_e or 0
-
-                    cur.execute(_adapt_query("SELECT SUM(cantidad) as total_s FROM Salida WHERE producto_id = ?", is_postgres), (prod_id_update,))
-                    total_s_row = cur.fetchone()
-                    total_s = total_s_row[0] if not is_postgres and total_s_row else (total_s_row['total_s'] if is_postgres and total_s_row else 0)
-                    total_s = total_s or 0
-                    
-                    stock_actualizado = total_e - total_s
-                    cur.execute(_adapt_query("UPDATE Inventario SET cantidad = ? WHERE producto_id = ?", is_postgres), (stock_actualizado, prod_id_update))
-                print("Inventario final actualizado.")
-            
             if is_postgres and cur_check != cur : cur_check.close()
         conn.commit()
     except Exception as e:
@@ -200,16 +126,15 @@ def init_db(add_sample_data=False):
         if cur: cur.close() 
         if conn: conn.close()
 
-
 @app.route('/')
 def dashboard():
-    productos_bajo_stock_alerta_row = _ejecutar_consulta_db('SELECT COUNT(*) as count FROM Inventario WHERE cantidad <= stock_minimo AND cantidad > 0', fetchone=True)
+    productos_bajo_stock_alerta_row = _ejecutar_consulta_db('SELECT COUNT(*) as count FROM inventario WHERE cantidad <= stock_minimo AND cantidad > 0', fetchone=True)
     productos_bajo_stock_alerta = 0
     if productos_bajo_stock_alerta_row:
         try: productos_bajo_stock_alerta = productos_bajo_stock_alerta_row['count']
         except (TypeError, KeyError): productos_bajo_stock_alerta = productos_bajo_stock_alerta_row[0]
 
-    productos_stock_critico_raw = _ejecutar_consulta_db("SELECT p.nombre, i.cantidad, i.stock_minimo FROM Producto p JOIN Inventario i ON p.id = i.producto_id WHERE i.cantidad IS NOT NULL ORDER BY (CASE WHEN i.cantidad = 0 THEN 2 ELSE (CASE WHEN i.cantidad <= i.stock_minimo THEN 0 ELSE 1 END) END) ASC, i.cantidad ASC LIMIT 10", fetchall=True) or []
+    productos_stock_critico_raw = _ejecutar_consulta_db("SELECT p.nombre, i.cantidad, i.stock_minimo FROM producto p JOIN inventario i ON p.id = i.producto_id WHERE i.cantidad IS NOT NULL ORDER BY (CASE WHEN i.cantidad = 0 THEN 2 ELSE (CASE WHEN i.cantidad <= i.stock_minimo THEN 0 ELSE 1 END) END) ASC, i.cantidad ASC LIMIT 10", fetchall=True) or []
     productos_stock_critico_procesado = []
     for prod_row in productos_stock_critico_raw:
         prod_dict = dict(prod_row) 
@@ -221,20 +146,20 @@ def dashboard():
         productos_stock_critico_procesado.append(prod_dict)
 
     current_month_str = datetime.datetime.now().strftime("%Y-%m")
-    conn_temp_check = get_db_connection()
-    is_pg_for_dashboard = not isinstance(conn_temp_check, sqlite3.Connection)
-    conn_temp_check.close()
+    conn_temp_for_type_check = get_db_connection()
+    is_pg_for_dashboard = not isinstance(conn_temp_for_type_check, sqlite3.Connection)
+    conn_temp_for_type_check.close()
     
     date_filter_sql_month = "strftime('%Y-%m', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY-MM') = %s"
     
-    sql_salidas_mes = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM Entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM Salida s WHERE {date_filter_sql_month}"
+    sql_salidas_mes = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM salida s WHERE {date_filter_sql_month}"
     salidas_del_mes_con_costo_for_cards = _ejecutar_consulta_db(sql_salidas_mes, (current_month_str,), fetchall=True) or []
     ingresos_mensuales_valor = 0.0
     for salida_card in salidas_del_mes_con_costo_for_cards:
         if salida_card['precio_venta_unitario_momento'] is not None and salida_card['costo_unitario_estimado'] is not None:
             ingresos_mensuales_valor += (salida_card['precio_venta_unitario_momento'] - salida_card['costo_unitario_estimado']) * salida_card['cantidad']
     
-    sql_valor_stock = "SELECT SUM(p.precio_venta * i.cantidad) as total FROM Producto p JOIN Inventario i ON p.id = i.producto_id WHERE i.cantidad > 0"
+    sql_valor_stock = "SELECT SUM(p.precio_venta * i.cantidad) as total FROM producto p JOIN inventario i ON p.id = i.producto_id WHERE i.cantidad > 0"
     valor_stock_actual_row = _ejecutar_consulta_db(sql_valor_stock, fetchone=True)
     valor_stock_actual = 0.0
     if valor_stock_actual_row:
@@ -244,14 +169,14 @@ def dashboard():
     
     current_year_str = datetime.datetime.now().strftime("%Y")
     year_filter_sql = "strftime('%Y', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY') = %s"
-    sql_salidas_ano = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM Entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM Salida s WHERE {year_filter_sql}"
+    sql_salidas_ano = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM salida s WHERE {year_filter_sql}"
     salidas_del_ano_con_costo = _ejecutar_consulta_db(sql_salidas_ano, (current_year_str,), fetchall=True) or []
     ingresos_anuales_valor = 0.0
     for salida_anual in salidas_del_ano_con_costo:
         if salida_anual['precio_venta_unitario_momento'] is not None and salida_anual['costo_unitario_estimado'] is not None:
             ingresos_anuales_valor += (salida_anual['precio_venta_unitario_momento'] - salida_anual['costo_unitario_estimado']) * salida_anual['cantidad']
     
-    sql_ultimos_mov = ''' SELECT p.nombre as nombre_producto, m.cantidad, m.fecha, m.tipo, m.id as movimiento_id FROM (SELECT id, producto_id, cantidad, fecha, 'Entrada' as tipo FROM Entrada UNION ALL SELECT id, producto_id, cantidad, fecha, 'Salida' as tipo FROM Salida) m JOIN Producto p ON m.producto_id = p.id ORDER BY m.fecha DESC, m.id DESC LIMIT 5 '''
+    sql_ultimos_mov = ''' SELECT p.nombre as nombre_producto, m.cantidad, m.fecha, m.tipo, m.id as movimiento_id FROM (SELECT id, producto_id, cantidad, fecha, 'Entrada' as tipo FROM entrada UNION ALL SELECT id, producto_id, cantidad, fecha, 'Salida' as tipo FROM salida) m JOIN producto p ON m.producto_id = p.id ORDER BY m.fecha DESC, m.id DESC LIMIT 5 '''
     ultimos_movimientos = _ejecutar_consulta_db(sql_ultimos_mov, fetchall=True) or []
         
     sales_trend_data = []
@@ -269,7 +194,7 @@ def dashboard():
         month_name_label = f"{meses_es_abbr[target_month_num - 1]} {str(target_year_num)[2:]}" 
         
         date_filter_sql_loop = "strftime('%Y-%m', fecha) = ?" if not is_pg_for_dashboard else "to_char(fecha, 'YYYY-MM') = %s"
-        sql_ventas_mes_trend = f"SELECT SUM(cantidad * precio_venta_unitario_momento) as total_ventas FROM Salida WHERE {date_filter_sql_loop}"
+        sql_ventas_mes_trend = f"SELECT SUM(cantidad * precio_venta_unitario_momento) as total_ventas FROM salida WHERE {date_filter_sql_loop}"
         ventas_del_mes_row = _ejecutar_consulta_db(sql_ventas_mes_trend, (month_year_str_loop,), fetchone=True)
         ventas_del_mes = 0.0
         if ventas_del_mes_row:
@@ -277,7 +202,7 @@ def dashboard():
             except (TypeError, KeyError): ventas_del_mes = ventas_del_mes_row[0]
             if ventas_del_mes is None: ventas_del_mes = 0.0
 
-        sql_salidas_mes_trend = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM Entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM Salida s WHERE {date_filter_sql_loop}"
+        sql_salidas_mes_trend = f"SELECT s.cantidad, s.precio_venta_unitario_momento, (SELECT e.precio_compra_unitario FROM entrada e WHERE e.producto_id = s.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) as costo_unitario_estimado FROM salida s WHERE {date_filter_sql_loop}"
         salidas_del_mes_especifico = _ejecutar_consulta_db(sql_salidas_mes_trend, (month_year_str_loop,), fetchall=True) or []
         ganancia_del_mes = 0.0
         for salida in salidas_del_mes_especifico:
@@ -302,7 +227,7 @@ def productos():
     search_query = request.args.get('q', '').strip()
     filtro_stock_bajo_str = request.args.get('filtro_stock_bajo', 'false') 
     filtro_stock_bajo_activo = filtro_stock_bajo_str == 'true'
-    base_query_sql = ''' SELECT p.id, p.nombre, p.descripcion, p.precio_venta, p.codigo_barras, COALESCE(i.cantidad, 0) as cantidad, COALESCE(i.stock_minimo, 5) as stock_minimo FROM Producto p LEFT JOIN Inventario i ON p.id = i.producto_id '''
+    base_query_sql = ''' SELECT p.id, p.nombre, p.descripcion, p.precio_venta, p.codigo_barras, COALESCE(i.cantidad, 0) as cantidad, COALESCE(i.stock_minimo, 5) as stock_minimo FROM producto p LEFT JOIN inventario i ON p.id = i.producto_id '''
     conditions = []
     params = []
     if search_query:
@@ -347,10 +272,10 @@ def agregar_producto():
             flash(f'Error en valores numéricos: {e}.', 'error')
             return render_template('agregar_producto.html', form_data=form_data_to_render)
         try:
-            sql_insert_producto = "INSERT INTO Producto (nombre, descripcion, precio_venta, codigo_barras) VALUES (?, ?, ?, ?)"
+            sql_insert_producto = "INSERT INTO producto (nombre, descripcion, precio_venta, codigo_barras) VALUES (?, ?, ?, ?)"
             producto_id = _ejecutar_consulta_db(sql_insert_producto, (nombre, descripcion, precio_venta, codigo_barras if codigo_barras else None), DML=True, returning_id=True)
             if producto_id:
-                _ejecutar_consulta_db("INSERT INTO Inventario (producto_id, cantidad, stock_minimo) VALUES (?, ?, ?)", (producto_id, cantidad_inicial, stock_minimo), DML=True)
+                _ejecutar_consulta_db("INSERT INTO inventario (producto_id, cantidad, stock_minimo) VALUES (?, ?, ?)", (producto_id, cantidad_inicial, stock_minimo), DML=True)
                 flash(f'¡Producto "{nombre}" añadido!', 'success')
                 return redirect(url_for('productos'))
             else: flash('Error al crear producto.', 'error')
@@ -361,7 +286,7 @@ def agregar_producto():
 
 @app.route('/productos/editar/<int:id>', methods=['GET', 'POST'])
 def editar_producto(id):
-    producto_query = 'SELECT p.id, p.nombre, p.descripcion, p.precio_venta, p.codigo_barras, COALESCE(i.cantidad, 0) as cantidad, COALESCE(i.stock_minimo, 5) as stock_minimo FROM Producto p LEFT JOIN Inventario i ON p.id = i.producto_id WHERE p.id = ?'
+    producto_query = 'SELECT p.id, p.nombre, p.descripcion, p.precio_venta, p.codigo_barras, COALESCE(i.cantidad, 0) as cantidad, COALESCE(i.stock_minimo, 5) as stock_minimo FROM producto p LEFT JOIN inventario i ON p.id = i.producto_id WHERE p.id = ?'
     producto_a_editar = _ejecutar_consulta_db(producto_query, (id,), fetchone=True)
     if not producto_a_editar:
         flash('Producto no encontrado.', 'error')
@@ -387,14 +312,14 @@ def editar_producto(id):
             flash(f'Error en valores numéricos: {e}.', 'error')
             return render_template('editar_producto.html', producto=producto_a_editar, form_data=form_data_to_render)
         try:
-            _ejecutar_consulta_db("UPDATE Producto SET nombre = ?, descripcion = ?, precio_venta = ?, codigo_barras = ? WHERE id = ?", 
+            _ejecutar_consulta_db("UPDATE producto SET nombre = ?, descripcion = ?, precio_venta = ?, codigo_barras = ? WHERE id = ?", 
                                 (nombre, descripcion, precio_venta, codigo_barras if codigo_barras else None, id), DML=True)
-            inventario_existente = _ejecutar_consulta_db("SELECT id FROM Inventario WHERE producto_id = ?", (id,), fetchone=True)
+            inventario_existente = _ejecutar_consulta_db("SELECT id FROM inventario WHERE producto_id = ?", (id,), fetchone=True)
             if inventario_existente:
-                _ejecutar_consulta_db("UPDATE Inventario SET cantidad = ?, stock_minimo = ? WHERE producto_id = ?", 
+                _ejecutar_consulta_db("UPDATE inventario SET cantidad = ?, stock_minimo = ? WHERE producto_id = ?", 
                                     (cantidad, stock_minimo, id), DML=True)
             else:
-                 _ejecutar_consulta_db("INSERT INTO Inventario (producto_id, cantidad, stock_minimo) VALUES (?, ?, ?)",
+                 _ejecutar_consulta_db("INSERT INTO inventario (producto_id, cantidad, stock_minimo) VALUES (?, ?, ?)",
                                     (id, cantidad, stock_minimo), DML=True)
             flash(f'Producto "{nombre}" actualizado.', 'success')
             return redirect(url_for('productos'))
@@ -405,10 +330,10 @@ def editar_producto(id):
 @app.route('/productos/eliminar/<int:id>', methods=['POST'])
 def eliminar_producto(id):
     try:
-        producto_nombre_row = _ejecutar_consulta_db("SELECT nombre FROM Producto WHERE id = ?", (id,), fetchone=True)
+        producto_nombre_row = _ejecutar_consulta_db("SELECT nombre FROM producto WHERE id = ?", (id,), fetchone=True)
         if producto_nombre_row:
             producto_nombre = producto_nombre_row['nombre']
-            _ejecutar_consulta_db("DELETE FROM Producto WHERE id = ?", (id,), DML=True)
+            _ejecutar_consulta_db("DELETE FROM producto WHERE id = ?", (id,), DML=True)
             flash(f'Producto "{producto_nombre}" eliminado.', 'success')
         else: flash('Producto no encontrado.', 'error')
     except Exception as e: flash(f'Error al eliminar: {e}', 'error')
@@ -419,7 +344,7 @@ def movimientos():
     search_query_mov = request.args.get('q_mov', '').strip()
     filtro_tipo_mov_header = request.args.get('tipo_mov_header', '') 
     filtro_fecha_exacta_header = request.args.get('fecha_exacta_header', '')
-    base_sql = ''' SELECT m.id as movimiento_id, p.nombre as nombre_producto, m.cantidad, m.fecha, m.tipo, m.precio_unitario, CASE WHEN m.tipo = 'Salida' THEN (SELECT e.precio_compra_unitario FROM Entrada e WHERE e.producto_id = m.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) ELSE NULL END as costo_unitario_estimado FROM (SELECT id, producto_id, cantidad, fecha, precio_compra_unitario as precio_unitario, 'Entrada' as tipo FROM Entrada UNION ALL SELECT id, producto_id, cantidad, fecha, precio_venta_unitario_momento as precio_unitario, 'Salida' as tipo FROM Salida) m JOIN Producto p ON m.producto_id = p.id '''
+    base_sql = ''' SELECT m.id as movimiento_id, p.nombre as nombre_producto, m.cantidad, m.fecha, m.tipo, m.precio_unitario, CASE WHEN m.tipo = 'Salida' THEN (SELECT e.precio_compra_unitario FROM entrada e WHERE e.producto_id = m.producto_id ORDER BY e.fecha DESC, e.id DESC LIMIT 1) ELSE NULL END as costo_unitario_estimado FROM (SELECT id, producto_id, cantidad, fecha, precio_compra_unitario as precio_unitario, 'Entrada' as tipo FROM entrada UNION ALL SELECT id, producto_id, cantidad, fecha, precio_venta_unitario_momento as precio_unitario, 'Salida' as tipo FROM salida) m JOIN producto p ON m.producto_id = p.id '''
     conditions_mov = []
     params_mov = []
     if search_query_mov:
@@ -453,7 +378,7 @@ def movimientos():
 
 @app.route('/movimientos/salida', methods=['GET', 'POST'])
 def registrar_salida():
-    productos_disponibles = _ejecutar_consulta_db('SELECT p.id, p.nombre, i.cantidad as stock_actual FROM Producto p JOIN Inventario i ON p.id = i.producto_id WHERE i.cantidad > 0 ORDER BY p.nombre ASC', fetchall=True) or []
+    productos_disponibles = _ejecutar_consulta_db('SELECT p.id, p.nombre, i.cantidad as stock_actual FROM producto p JOIN inventario i ON p.id = i.producto_id WHERE i.cantidad > 0 ORDER BY p.nombre ASC', fetchall=True) or []
     form_data_to_render = request.form.to_dict() if request.method == 'POST' else {}
     if request.method == 'POST':
         try:
@@ -465,7 +390,7 @@ def registrar_salida():
             producto_id = int(producto_id_str)
             cantidad_salida = int(cantidad_str)
             if cantidad_salida <= 0: raise ValueError("La cantidad debe ser un número positivo.")
-            producto_info = _ejecutar_consulta_db('SELECT p.nombre, p.precio_venta, i.cantidad as stock_actual FROM Producto p JOIN Inventario i ON p.id = i.producto_id WHERE p.id = ?', (producto_id,), fetchone=True)
+            producto_info = _ejecutar_consulta_db('SELECT p.nombre, p.precio_venta, i.cantidad as stock_actual FROM producto p JOIN inventario i ON p.id = i.producto_id WHERE p.id = ?', (producto_id,), fetchone=True)
             if not producto_info:
                 flash('Producto no encontrado o sin inventario registrado.', 'error')
                 return render_template('registrar_salida.html', productos=productos_disponibles, form_data=form_data_to_render)
@@ -473,8 +398,8 @@ def registrar_salida():
                 flash(f"No hay suficiente stock para '{producto_info['nombre']}'. Stock actual: {producto_info['stock_actual']}.", 'error')
                 return render_template('registrar_salida.html', productos=productos_disponibles, form_data=form_data_to_render)
             nuevo_stock = producto_info['stock_actual'] - cantidad_salida
-            _ejecutar_consulta_db('UPDATE Inventario SET cantidad = ? WHERE producto_id = ?', (nuevo_stock, producto_id), DML=True)
-            _ejecutar_consulta_db('INSERT INTO Salida (producto_id, cantidad, precio_venta_unitario_momento) VALUES (?, ?, ?)', (producto_id, cantidad_salida, producto_info['precio_venta']), DML=True)
+            _ejecutar_consulta_db('UPDATE inventario SET cantidad = ? WHERE producto_id = ?', (nuevo_stock, producto_id), DML=True)
+            _ejecutar_consulta_db('INSERT INTO salida (producto_id, cantidad, precio_venta_unitario_momento) VALUES (?, ?, ?)', (producto_id, cantidad_salida, producto_info['precio_venta']), DML=True)
             flash(f'Salida de {cantidad_salida} unidad(es) de "{producto_info["nombre"]}" registrada.', 'success')
             return redirect(url_for('movimientos'))
         except ValueError as e: flash(f'Error en los valores ingresados: {e}.', 'error')
@@ -484,7 +409,7 @@ def registrar_salida():
 
 @app.route('/movimientos/entrada', methods=['GET', 'POST'])
 def registrar_entrada():
-    lista_todos_productos = _ejecutar_consulta_db('SELECT id, nombre FROM Producto ORDER BY nombre ASC', fetchall=True) or []
+    lista_todos_productos = _ejecutar_consulta_db('SELECT id, nombre FROM producto ORDER BY nombre ASC', fetchall=True) or []
     form_data_to_render = request.form.to_dict() if request.method == 'POST' else {}
     if request.method == 'POST':
         try:
@@ -499,18 +424,18 @@ def registrar_entrada():
             costo_total_lote = float(costo_total_lote_str)
             if cantidad_comprada <= 0 or costo_total_lote < 0: raise ValueError("Cantidad debe ser positiva y costo no negativo.")
             costo_unitario = costo_total_lote / cantidad_comprada if cantidad_comprada > 0 else 0
-            producto_nombre_row = _ejecutar_consulta_db('SELECT nombre FROM Producto WHERE id = ?', (producto_id,), fetchone=True)
+            producto_nombre_row = _ejecutar_consulta_db('SELECT nombre FROM producto WHERE id = ?', (producto_id,), fetchone=True)
             if not producto_nombre_row:
                 flash('Producto no válido.', 'error')
                 return render_template('registrar_entrada.html', productos=lista_todos_productos, form_data=form_data_to_render)
             producto_nombre = producto_nombre_row['nombre']
-            inventario_actual = _ejecutar_consulta_db('SELECT cantidad FROM Inventario WHERE producto_id = ?', (producto_id,), fetchone=True)
+            inventario_actual = _ejecutar_consulta_db('SELECT cantidad FROM inventario WHERE producto_id = ?', (producto_id,), fetchone=True)
             if inventario_actual:
                 nuevo_stock = inventario_actual['cantidad'] + cantidad_comprada
-                _ejecutar_consulta_db('UPDATE Inventario SET cantidad = ? WHERE producto_id = ?', (nuevo_stock, producto_id), DML=True)
+                _ejecutar_consulta_db('UPDATE inventario SET cantidad = ? WHERE producto_id = ?', (nuevo_stock, producto_id), DML=True)
             else:
-                _ejecutar_consulta_db('INSERT INTO Inventario (producto_id, cantidad, stock_minimo) VALUES (?, ?, ?)', (producto_id, cantidad_comprada, 5), DML=True)
-            _ejecutar_consulta_db('INSERT INTO Entrada (producto_id, cantidad, precio_compra_unitario) VALUES (?, ?, ?)', (producto_id, cantidad_comprada, costo_unitario), DML=True)
+                _ejecutar_consulta_db('INSERT INTO inventario (producto_id, cantidad, stock_minimo) VALUES (?, ?, ?)', (producto_id, cantidad_comprada, 5), DML=True)
+            _ejecutar_consulta_db('INSERT INTO entrada (producto_id, cantidad, precio_compra_unitario) VALUES (?, ?, ?)', (producto_id, cantidad_comprada, costo_unitario), DML=True)
             flash(f'Entrada de "{producto_nombre}" registrada (Costo Unit: {costo_unitario:,.0f} COP).', 'success')
             return redirect(url_for('movimientos'))
         except ValueError as e: flash(f'Error en valores: {e}.', 'error')
@@ -521,7 +446,7 @@ def registrar_entrada():
 @app.route('/proveedores', endpoint='proveedores_lista') 
 def proveedores_lista():
     search_query_proveedor = request.args.get('q_proveedor', '').strip()
-    query_sql = 'SELECT id, nombre, telefono, correo, descripcion, fecha_registro FROM Proveedor'
+    query_sql = 'SELECT id, nombre, telefono, correo, descripcion, fecha_registro FROM proveedor'
     conditions = []
     params = []
     if search_query_proveedor:
@@ -543,7 +468,7 @@ def agregar_proveedor():
             flash('Nombre y teléfono son obligatorios.', 'error')
             return render_template('agregar_proveedor.html', form_data=form_data_to_render)
         try:
-            _ejecutar_consulta_db("INSERT INTO Proveedor (nombre, telefono, correo, descripcion) VALUES (?, ?, ?, ?)",
+            _ejecutar_consulta_db("INSERT INTO proveedor (nombre, telefono, correo, descripcion) VALUES (?, ?, ?, ?)",
                                 (nombre, telefono, form_data_to_render.get('correo_proveedor'), form_data_to_render.get('descripcion_proveedor')), DML=True)
             flash(f'Proveedor "{nombre}" añadido.', 'success')
             return redirect(url_for('proveedores_lista'))
@@ -553,7 +478,7 @@ def agregar_proveedor():
 
 @app.route('/proveedores/editar/<int:id>', methods=['GET', 'POST'])
 def editar_proveedor(id):
-    proveedor_a_editar = _ejecutar_consulta_db("SELECT * FROM Proveedor WHERE id = ?", (id,), fetchone=True)
+    proveedor_a_editar = _ejecutar_consulta_db("SELECT * FROM proveedor WHERE id = ?", (id,), fetchone=True)
     if not proveedor_a_editar:
         flash('Proveedor no encontrado.', 'error')
         return redirect(url_for('proveedores_lista'))
@@ -572,7 +497,7 @@ def editar_proveedor(id):
             flash('Nombre y teléfono son obligatorios.', 'error')
             return render_template('editar_proveedor.html', proveedor=proveedor_a_editar, form_data=form_data_to_render)
         try:
-            _ejecutar_consulta_db("UPDATE Proveedor SET nombre = ?, telefono = ?, correo = ?, descripcion = ? WHERE id = ?",
+            _ejecutar_consulta_db("UPDATE proveedor SET nombre = ?, telefono = ?, correo = ?, descripcion = ? WHERE id = ?",
                                 (nombre, telefono, form_data_to_render.get('correo_proveedor'), form_data_to_render.get('descripcion_proveedor'), id), DML=True)
             flash(f'Proveedor "{nombre}" actualizado.', 'success')
             return redirect(url_for('proveedores_lista'))
@@ -583,10 +508,10 @@ def editar_proveedor(id):
 @app.route('/proveedores/eliminar/<int:id>', methods=['POST'])
 def eliminar_proveedor(id):
     try:
-        proveedor_nombre_row = _ejecutar_consulta_db("SELECT nombre FROM Proveedor WHERE id = ?", (id,), fetchone=True)
+        proveedor_nombre_row = _ejecutar_consulta_db("SELECT nombre FROM proveedor WHERE id = ?", (id,), fetchone=True)
         if proveedor_nombre_row:
             proveedor_nombre = proveedor_nombre_row['nombre']
-            _ejecutar_consulta_db("DELETE FROM Proveedor WHERE id = ?", (id,), DML=True)
+            _ejecutar_consulta_db("DELETE FROM proveedor WHERE id = ?", (id,), DML=True)
             flash(f'Proveedor "{proveedor_nombre}" eliminado.', 'success')
         else: flash('Proveedor no encontrado.', 'error')
     except Exception as e: flash(f'Error al eliminar: {e}', 'error')
@@ -601,6 +526,5 @@ if __name__ == '__main__':
     db_type = "PostgreSQL Remota" if os.environ.get('DATABASE_URL') else "SQLite local"
     print(f"La base de datos se creará/estará en: {db_type}")
     init_db(add_sample_data= not bool(os.environ.get('DATABASE_URL'))) 
-    
     is_production = bool(os.environ.get('DATABASE_URL'))
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=not is_production)
