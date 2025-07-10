@@ -446,4 +446,5 @@ if __name__ == '__main__':
     init_db(add_sample_data= not bool(os.environ.get('DATABASE_URL'))) 
     is_production = bool(os.environ.get('DATABASE_URL'))
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=not is_production)
-
+    port = int(os.environ.get("PORT", 8080)) # Cambiar 5000 por 8080
+    app.run(host='0.0.0.0', port=port, debug=not is_production)

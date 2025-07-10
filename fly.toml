@@ -1,20 +1,15 @@
-# fly.toml app configuration file generated for inventario-cozy-loungewear on 2025-07-09T19:37:26-05:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = 'inventario-cozy-loungewear'
-primary_region = 'bog'
+app = "inventario-cozy-loungewear"
+primary_region = "bog"
 
 [build]
 
-[http_service]
+[[http_service]]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
-  processes = ['app']
+  processes = ["app"]
 
 [[vm]]
   memory = '1gb'
@@ -22,4 +17,4 @@ primary_region = 'bog'
   cpus = 1
 
 [env]
-  PYTHON_VERSION = "3.12"
+  PYTHON_VERSION = 3.12
